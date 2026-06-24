@@ -619,24 +619,24 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Extract BF-8 daily parameters from production report PDFs into CSV. "
-            "With no --input-dir, reads PDF folders from Google Drive (drive_config.json)."
+            "With no --input-dir, reads PDF folders from drive_config.json."
         )
     )
     parser.add_argument(
         "--input-dir",
         nargs="+",
         default=None,
-        help="One or more folders containing daily PDF reports (overrides Drive).",
+        help="One or more folders containing daily PDF reports (overrides config).",
     )
     parser.add_argument(
-        "--from-drive",
+        "--from-config",
         action="store_true",
-        help="Read PDF folders from Google Drive using drive_config.json.",
+        help="Read PDF folders from pdf_root in drive_config.json.",
     )
     parser.add_argument(
         "--output",
         default=None,
-        help="Output CSV path (default: BF8_merged_all.csv from drive config, else bf8_daily.csv).",
+        help="Output CSV path (default: BF8_merged_all.csv from config, else bf8_daily.csv).",
     )
     parser.add_argument(
         "--page",
@@ -666,11 +666,11 @@ def main() -> int:
     args = parse_args()
     config = load_drive_config()
 
-    use_drive = args.from_drive or args.input_dir is None
+    use_config = args.from_config or args.input_dir is None
     try:
         input_dirs = resolve_input_directories(
             input_dirs=args.input_dir,
-            from_drive=use_drive,
+            from_config=use_config,
             config=config,
         )
     except FileNotFoundError as exc:
@@ -679,17 +679,17 @@ def main() -> int:
 
     if not input_dirs:
         print(
-            "No input folders specified. Use --input-dir or configure Google Drive.\n"
+            "No input folders specified. Use --input-dir or set pdf_root in drive_config.json.\n"
             "See drive_config.json.example and README.md.",
             file=sys.stderr,
         )
         return 1
 
-    output_csv = args.output or (config["output_csv"] if use_drive else "bf8_daily.csv")
-    page = args.page or (config["page"] if use_drive else "1")
+    output_csv = args.output or (config["output_csv"] if use_config else "bf8_daily.csv")
+    page = args.page or (config["page"] if use_config else "1")
 
-    if use_drive:
-        print("Using Google Drive PDF folders:")
+    if use_config:
+        print("Using PDF folders from drive_config.json:")
         for folder in input_dirs:
             print(f"  - {folder}")
 
