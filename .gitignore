@@ -1,6 +1,8 @@
 sample_pdfs/
 sample_report.pdf
 test_output.csv
+test_page2.csv
+test_all.csv
 __pycache__/
 *.pyc
 .ipynb_checkpoints/

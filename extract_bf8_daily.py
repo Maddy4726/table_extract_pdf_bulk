@@ -50,6 +50,56 @@ KEY_PARAMS: list[tuple[str, str]] = [
 
 NUMERIC_COLUMNS = [label for _, label in KEY_PARAMS]
 
+# Page 2: hot metal & slag quality (table 0, column layout with BF-8)
+QUALITY_PARAMS: list[tuple[str, str]] = [
+    ("Avg. % 'Si'", "HM_Si_pct_avg"),
+    ("Avg. % 'S'", "HM_S_pct_avg"),
+    ("Avg. % MgO", "Slag_MgO_pct_avg"),
+    ("Avg. % Al2O3", "Slag_Al2O3_pct_avg"),
+    ("Avg. % FeO", "Slag_FeO_pct_avg"),
+    ("Avg. % K2O", "Slag_K2O_pct_avg"),
+    ("BASICITY(-)", "Slag_Basicity_avg"),
+    ("Avg. % 'P'", "HM_P_pct_avg"),
+]
+
+QUALITY_NUMERIC_COLUMNS = [label for _, label in QUALITY_PARAMS]
+
+# Page 2: BF-8 row tables (first column identifies the furnace)
+SKIP_SINTER_COLUMNS: list[tuple[str, str]] = [
+    ("% Fe", "SkipSinter_Fe_pct"),
+    ("% SiO2", "SkipSinter_SiO2_pct"),
+    ("% Al2O3", "SkipSinter_Al2O3_pct"),
+    ("% CaO", "SkipSinter_CaO_pct"),
+    ("% MgO", "SkipSinter_MgO_pct"),
+    ("BASICITY", "SkipSinter_Basicity"),
+]
+
+SEIVE_COLUMNS: list[tuple[str, str]] = [
+    ("-10 mm", "Seive_minus10mm"),
+    ("- 5 mm", "Seive_minus5mm"),
+    ("M.Size", "Seive_MSize"),
+    ("+40 mm", "Seive_plus40mm"),
+]
+
+PELLET_COLUMNS: list[tuple[str, str]] = [
+    ("Fe", "Pellet_Fe_pct"),
+    ("SiO2", "Pellet_SiO2_pct"),
+    ("Al2O3", "Pellet_Al2O3_pct"),
+    ("CaO", "Pellet_CaO_pct"),
+    ("MgO", "Pellet_MgO_pct"),
+    ("+ 10 MM", "Pellet_plus10mm"),
+    ("- 5 MM", "Pellet_minus5mm"),
+    ("M.Size", "Pellet_MSize"),
+    ("Basicity", "Pellet_Basicity"),
+]
+
+PAGE2_NUMERIC_COLUMNS = (
+    QUALITY_NUMERIC_COLUMNS
+    + [label for _, label in SKIP_SINTER_COLUMNS]
+    + [label for _, label in SEIVE_COLUMNS]
+    + [label for _, label in PELLET_COLUMNS]
+)
+
 # Text-line aliases when the PARAMETERS column label differs slightly in extract_text().
 TEXT_PARAM_ALIASES: dict[str, list[str]] = {
     "PRODUCTION": [r"\bPRODUCTION\b"],
@@ -104,9 +154,124 @@ def _find_bf8_column(header_row: list[Any] | None) -> int:
     if not header_row:
         return -1
     for idx, cell in enumerate(header_row):
-        if cell and re.search(r"BF\s*#\s*8", str(cell)):
+        if cell and re.search(r"BF\s*[#-]\s*8", str(cell)):
             return idx
     return -1
+
+
+def _find_quality_table(
+    tables: list[list[list[Any]]],
+) -> tuple[list[list[Any]] | None, list[Any] | None]:
+    """Return the HOT METAL AND SLAG QUALITY table and its header row."""
+    for table in tables:
+        for row in table:
+            if not row:
+                continue
+            row_text = " ".join(str(cell) for cell in row if cell)
+            if "Parameter" in row_text and re.search(r"BF\s*-\s*8", row_text):
+                return table, row
+    return None, None
+
+
+def _extract_row_table_values(
+    header_row: list[Any] | None,
+    data_row: list[Any],
+    column_map: list[tuple[str, str]],
+) -> dict[str, Any]:
+    """Map header labels to output columns for a BF # 8 data row."""
+    record: dict[str, Any] = {}
+    if not header_row:
+        return record
+
+    header_lookup = {
+        _normalize_label(cell): idx
+        for idx, cell in enumerate(header_row)
+        if cell and str(cell).strip()
+    }
+
+    for header_label, out_col in column_map:
+        idx = header_lookup.get(_normalize_label(header_label))
+        if idx is None or idx >= len(data_row):
+            record[out_col] = None
+            continue
+        value = data_row[idx]
+        if value is not None and str(value).strip() in ("", "#DIV/0!", "#DIV/0"):
+            value = None
+        record[out_col] = value
+
+    return record
+
+
+def _find_skip_sinter_table(
+    tables: list[list[list[Any]]],
+) -> tuple[list[Any] | None, list[Any] | None]:
+    def is_sinter_header(row: list[Any]) -> bool:
+        row_text = " ".join(str(cell) for cell in row if cell)
+        return "% FE" in _normalize_label(row_text) and "BASICITY" in _normalize_label(row_text)
+
+    for table in tables:
+        header_row = next((row for row in table if is_sinter_header(row)), None)
+        data_row = next(
+            (row for row in table if row and str(row[0]).strip() == "BF # 8"),
+            None,
+        )
+        if header_row and data_row:
+            return header_row, data_row
+    return None, None
+
+
+def _find_seive_table(
+    tables: list[list[list[Any]]],
+) -> tuple[list[Any] | None, list[Any] | None]:
+    for table in tables:
+        header_row = next(
+            (
+                row
+                for row in table
+                if row
+                and row[0]
+                and "-10" in str(row[0])
+                and "M.Size" in " ".join(str(c) for c in row if c)
+            ),
+            None,
+        )
+        if header_row is None:
+            header_row = next(
+                (
+                    row
+                    for row in table
+                    if row and any(str(cell).strip() == "- 5 mm" for cell in row if cell)
+                ),
+                None,
+            )
+        data_row = next(
+            (row for row in table if row and str(row[0]).strip() == "BF # 8"),
+            None,
+        )
+        if header_row and data_row:
+            return header_row, data_row
+    return None, None
+
+
+def _find_pellet_table(
+    tables: list[list[list[Any]]],
+) -> tuple[list[Any] | None, list[Any] | None]:
+    for table in tables:
+        if not any(
+            row and row[0] and "PELLET CHEMICAL" in str(row[0]).upper() for row in table
+        ):
+            continue
+        header_row = next(
+            (row for row in table if row and str(row[1]).strip() == "Fe"),
+            None,
+        )
+        data_row = next(
+            (row for row in table if row and str(row[0]).strip() == "BF # 8 =>"),
+            None,
+        )
+        if header_row and data_row:
+            return header_row, data_row
+    return None, None
 
 
 def _numbers_from_line(line: str) -> list[str]:
@@ -295,6 +460,102 @@ def extract_bf8(pdf_path: str, verbose: bool = False) -> dict[str, Any]:
     return record
 
 
+def extract_bf8_page2(pdf_path: str, verbose: bool = False) -> dict[str, Any]:
+    """Extract BF-8 hot metal / slag quality and related page-2 tables."""
+    empty: dict[str, Any] = {
+        "Date": "Unknown",
+        "source_file": os.path.basename(pdf_path),
+    }
+    empty.update({label: None for _, label in QUALITY_PARAMS})
+    empty.update({label: None for _, label in SKIP_SINTER_COLUMNS})
+    empty.update({label: None for _, label in SEIVE_COLUMNS})
+    empty.update({label: None for _, label in PELLET_COLUMNS})
+
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            if len(pdf.pages) < 2:
+                if verbose:
+                    print(f"WARNING: page 2 missing in {pdf_path}", file=sys.stderr)
+                return empty
+
+            page1_text = pdf.pages[0].extract_text() or ""
+            page = pdf.pages[1]
+            page_text = page.extract_text() or ""
+            tables = page.extract_tables() or []
+    except Exception as exc:
+        if verbose:
+            print(f"WARNING: failed to open {pdf_path}: {exc}", file=sys.stderr)
+        return empty
+
+    record: dict[str, Any] = {
+        "Date": _extract_date(page1_text, pdf_path),
+        "source_file": os.path.basename(pdf_path),
+    }
+
+    quality_table, quality_header = _find_quality_table(tables)
+    if quality_table is None:
+        if verbose:
+            print(f"WARNING: quality table not found in {pdf_path}", file=sys.stderr)
+        record.update({label: None for _, label in QUALITY_PARAMS})
+    else:
+        bf8_col_idx = _find_bf8_column(quality_header)
+
+        param_lookup = {
+            _normalize_label(row[0]): row
+            for row in quality_table
+            if row and row[0] and str(row[0]).strip()
+        }
+
+        for param_name, col_label in QUALITY_PARAMS:
+            row = param_lookup.get(_normalize_label(param_name))
+            if row is None:
+                record[col_label] = None
+                if verbose:
+                    print(
+                        f"WARNING: quality parameter {param_name!r} missing in {pdf_path}",
+                        file=sys.stderr,
+                    )
+                continue
+
+            value = row[bf8_col_idx] if bf8_col_idx >= 0 and bf8_col_idx < len(row) else None
+            if value is not None and str(value).strip() == "":
+                value = None
+            record[col_label] = value
+
+    sinter_header, sinter_row = _find_skip_sinter_table(tables)
+    record.update(_extract_row_table_values(sinter_header, sinter_row or [], SKIP_SINTER_COLUMNS))
+
+    seive_header, seive_row = _find_seive_table(tables)
+    if seive_header and seive_row:
+        # Seive table repeats M.Size; map the first matching columns explicitly.
+        record.update(
+            {
+                "Seive_minus10mm": seive_row[1] if len(seive_row) > 1 else None,
+                "Seive_minus5mm": seive_row[2] if len(seive_row) > 2 else None,
+                "Seive_MSize": seive_row[3] if len(seive_row) > 3 else None,
+                "Seive_plus40mm": seive_row[4] if len(seive_row) > 4 else None,
+            }
+        )
+    else:
+        record.update({label: None for _, label in SEIVE_COLUMNS})
+
+    pellet_header, pellet_row = _find_pellet_table(tables)
+    record.update(_extract_row_table_values(pellet_header, pellet_row or [], PELLET_COLUMNS))
+
+    return record
+
+
+def extract_bf8_combined(pdf_path: str, verbose: bool = False) -> dict[str, Any]:
+    """Extract page-1 production and page-2 quality fields for one PDF."""
+    record = extract_bf8(pdf_path, verbose=verbose)
+    page2 = extract_bf8_page2(pdf_path, verbose=verbose)
+    for key, value in page2.items():
+        if key in ("Date", "source_file"):
+            continue
+        record[key] = value
+    return record
+
+
 def collect_pdf_paths(input_dirs: list[str], recursive: bool = False) -> list[str]:
     paths: list[str] = []
     pattern = "**/*.pdf" if recursive else "*.pdf"
@@ -313,18 +574,32 @@ def stitch_pdfs_to_csv(
     output_csv: str,
     verbose: bool = False,
     replace_zero_with_na: bool = True,
+    page: str = "1",
 ) -> pd.DataFrame:
     records: list[dict[str, Any]] = []
 
+    extractors = {
+        "1": extract_bf8,
+        "2": extract_bf8_page2,
+        "all": extract_bf8_combined,
+    }
+    extract_fn = extractors[page]
+
     for pdf_path in pdf_paths:
-        record = extract_bf8(pdf_path, verbose=verbose)
+        record = extract_fn(pdf_path, verbose=verbose)
         records.append(record)
         if verbose:
             print(f"  {os.path.basename(pdf_path)} -> {record['Date']}")
 
     df = pd.DataFrame(records)
 
-    for col in NUMERIC_COLUMNS:
+    numeric_cols = {
+        "1": NUMERIC_COLUMNS,
+        "2": PAGE2_NUMERIC_COLUMNS,
+        "all": NUMERIC_COLUMNS + PAGE2_NUMERIC_COLUMNS,
+    }[page]
+
+    for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
@@ -340,7 +615,7 @@ def stitch_pdfs_to_csv(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Extract BF-8 daily parameters from production report PDFs into one CSV."
+        description="Extract BF-8 daily parameters from production report PDFs into CSV."
     )
     parser.add_argument(
         "--input-dir",
@@ -352,6 +627,12 @@ def parse_args() -> argparse.Namespace:
         "--output",
         default="bf8_daily.csv",
         help="Output CSV path (default: bf8_daily.csv).",
+    )
+    parser.add_argument(
+        "--page",
+        choices=("1", "2", "all"),
+        default="1",
+        help="Which pages to extract: 1=production, 2=quality, all=merged (default: 1).",
     )
     parser.add_argument(
         "--recursive",
@@ -379,12 +660,14 @@ def main() -> int:
         print("No PDF files found.", file=sys.stderr)
         return 1
 
-    print(f"Found {len(pdf_paths)} PDF(s). Extracting...")
+    page_label = {"1": "page 1 production", "2": "page 2 quality", "all": "pages 1+2"}[args.page]
+    print(f"Found {len(pdf_paths)} PDF(s). Extracting {page_label}...")
     df = stitch_pdfs_to_csv(
         pdf_paths,
         args.output,
         verbose=args.verbose,
         replace_zero_with_na=not args.keep_zero,
+        page=args.page,
     )
 
     print(f"Saved {df.shape[0]} rows x {df.shape[1]} columns -> {args.output}")

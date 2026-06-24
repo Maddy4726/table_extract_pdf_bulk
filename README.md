@@ -14,29 +14,39 @@ Each daily report is typically **3 pages**:
 | 2 | Hot metal / slag quality, raw material analysis, coke chemistry |
 | 3 | Stoppage log, skip counts, CDI records, monthly summaries |
 
-The script focuses on **page 1**, table 1 (the large ~120-row PARAMETERS grid). It finds the row containing `PARAMETERS` and `BF # 8`, then reads the BF # 8 column for each target parameter.
+The script extracts **page 1** production parameters and **page 2** hot-metal / slag quality data for BF # 8.
 
 ## Quick start
 
 ```bash
 pip install -r requirements.txt
 
-# One fiscal-year folder
+# Page 1 only (production parameters)
 python extract_bf8_daily.py \
   --input-dir "/path/to/DailyProdReports_FY2024-25" \
   --output BF8_24-25.csv \
+  --page 1 \
   --verbose
 
-# Stitch multiple years together
+# Page 2 only (quality + skip sinter + seive + pellet)
+python extract_bf8_daily.py \
+  --input-dir "/path/to/DailyProdReports_FY2024-25" \
+  --output BF8_quality_24-25.csv \
+  --page 2 \
+  --verbose
+
+# Pages 1 + 2 merged into one wide CSV (best for modeling)
 python extract_bf8_daily.py \
   --input-dir \
     "/path/to/DailyProdReports_FY2023-24" \
     "/path/to/DailyProdReports_FY2024-25" \
     "/path/to/DailyProdReports_FY2025-26" \
-  --output BF8_merged.csv
+  --output BF8_merged.csv \
+  --page all \
+  --verbose
 ```
 
-## Extracted columns
+## Page 1 columns (production)
 
 | CSV column | PDF parameter |
 |------------|---------------|
@@ -49,6 +59,24 @@ python extract_bf8_daily.py \
 | `Iron_ore_rate_kgTHM` | IRON ORE RATE |
 | `SinterRate_kgTHM` | SINTER Rt. |
 | ... | (see `KEY_PARAMS` in `extract_bf8_daily.py`) |
+
+## Page 2 columns (quality)
+
+| CSV column | Source on page 2 |
+|------------|------------------|
+| `HM_Si_pct_avg` | Hot metal & slag quality table — Avg. % 'Si' |
+| `HM_S_pct_avg` | Avg. % 'S' |
+| `HM_P_pct_avg` | Avg. % 'P' |
+| `Slag_MgO_pct_avg` | Avg. % MgO |
+| `Slag_Al2O3_pct_avg` | Avg. % Al2O3 |
+| `Slag_FeO_pct_avg` | Avg. % FeO |
+| `Slag_K2O_pct_avg` | Avg. % K2O |
+| `Slag_Basicity_avg` | BASICITY(-) |
+| `SkipSinter_Fe_pct` | Skip sinter table — BF # 8 row |
+| `SkipSinter_SiO2_pct` | ... |
+| `SkipSinter_Basicity` | ... |
+| `Seive_minus10mm` | Sieve / fines table — BF # 8 row |
+| `Pellet_plus10mm` | Pellet chemical table — BF # 8 => row |
 
 Numeric columns are coerced with `pd.to_numeric`. Literal `0` values are converted to `NA` by default (BF # 8 was often idle on older reports). Use `--keep-zero` to preserve zeros.
 
@@ -72,18 +100,19 @@ When BF # 5 is idle, pdfplumber sometimes leaves that table cell empty and shift
 ## Test on a single PDF (Python)
 
 ```python
-from extract_bf8_daily import extract_bf8
+from extract_bf8_daily import extract_bf8, extract_bf8_page2, extract_bf8_combined
 
-record = extract_bf8("sample_report.pdf", verbose=True)
-print(record)
+record = extract_bf8("sample_report.pdf")
+quality = extract_bf8_page2("sample_report.pdf")
+merged = extract_bf8_combined("sample_report.pdf")
 ```
 
 ## Next steps for your 5-year dataset
 
-1. Point `--input-dir` at each fiscal-year folder (or use `--recursive` on a parent directory).
-2. Merge yearly CSVs with `pd.concat` if you prefer separate runs.
-3. Extend `KEY_PARAMS` for additional rows from page 1, or add a second extractor for page 2 quality tables.
-4. Use the notebook’s EDA / modeling cells on the stitched CSV.
+1. Run with `--page all` to get one modeling-ready CSV with production + quality features.
+2. Point `--input-dir` at each fiscal-year folder (or use `--recursive` on a parent directory).
+3. Extend `KEY_PARAMS` / `QUALITY_PARAMS` for additional rows.
+4. Page 3 (stoppage log) can be added next if you need downtime features.
 
 ## Requirements
 
