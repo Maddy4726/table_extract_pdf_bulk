@@ -1,5 +1,6 @@
 {
   "drive_root": "Blast Furnace Data/BF-8/Production and Quality/PDF - Daily Production Reports",
+  "drive_base": "",
   "fiscal_year_glob": "DailyProdReports_FY*",
   "output_csv": "BF8_merged_all.csv",
   "page": "all",

@@ -56,6 +56,40 @@ export BF8_DRIVE_ROOT="/content/drive/MyDrive/Blast Furnace Data/BF-8/Production
 python extract_bf8_daily.py --verbose
 ```
 
+### Windows (if auto-detect fails)
+
+Your PDFs may be on the **`G:` drive** (common with Google Drive for desktop) or not synced locally at all.
+
+**Option A — set full path in `drive_config.json`:**
+
+```json
+{
+  "drive_base": "G:\\My Drive\\Blast Furnace Data\\BF-8\\Production and Quality\\PDF - Daily Production Reports",
+  "drive_root": "Blast Furnace Data/BF-8/Production and Quality/PDF - Daily Production Reports"
+}
+```
+
+**Option B — PowerShell env var (one session):**
+
+```powershell
+$env:BF8_DRIVE_ROOT = "G:\My Drive\Blast Furnace Data\BF-8\Production and Quality\PDF - Daily Production Reports"
+python extract_bf8_daily.py --verbose
+```
+
+**Option C — point directly at one fiscal-year folder:**
+
+```powershell
+python extract_bf8_daily.py --input-dir "G:\My Drive\...\DailyProdReports_FY2024-25" --page all --verbose
+```
+
+**Find where your folders are:**
+
+```powershell
+python find_pdf_folders.py
+```
+
+If PDFs exist only in cloud Drive (not on your PC), use **Google Colab** instead.
+
 ### Google Colab
 
 ```python
