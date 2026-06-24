@@ -3,6 +3,8 @@ sample_report.pdf
 test_output.csv
 test_page2.csv
 test_all.csv
+BF8_merged_all.csv
+fake_drive/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/

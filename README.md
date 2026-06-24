@@ -16,11 +16,59 @@ Each daily report is typically **3 pages**:
 
 The script extracts **page 1** production parameters and **page 2** hot-metal / slag quality data for BF # 8.
 
-## Quick start
+## Quick start (Google Drive — recommended)
+
+One-time setup:
 
 ```bash
 pip install -r requirements.txt
+cp drive_config.json.example drive_config.json   # edit if your Drive path differs
+```
 
+Then run with **no arguments** — the script finds all `DailyProdReports_FY*` folders in Drive, extracts every PDF, and writes `BF8_merged_all.csv`:
+
+```bash
+python extract_bf8_daily.py --verbose
+```
+
+### Where it looks for your PDFs
+
+| Environment | How Drive is accessed |
+|-------------|----------------------|
+| **Google Colab** | Auto-mounts Drive at `/content/drive`, then uses `drive_root` from config |
+| **Local PC (Drive desktop app)** | `~/Google Drive/My Drive/...` or macOS `CloudStorage/GoogleDrive-*/My Drive/...` |
+| **Any machine** | Set `BF8_DRIVE_ROOT` to the full path of the parent folder containing `DailyProdReports_FY*` |
+
+Your notebook used this path inside Drive:
+
+```
+Blast Furnace Data/BF-8/Production and Quality/PDF - Daily Production Reports/
+  DailyProdReports_FY2023-24/
+  DailyProdReports_FY2024-25/
+  DailyProdReports_FY2025-26/
+  ... (any folder matching DailyProdReports_FY*)
+```
+
+Override with environment variable if needed:
+
+```bash
+export BF8_DRIVE_ROOT="/content/drive/MyDrive/Blast Furnace Data/BF-8/Production and Quality/PDF - Daily Production Reports"
+python extract_bf8_daily.py --verbose
+```
+
+### Google Colab
+
+```python
+!pip install pdfplumber pandas
+!git clone https://github.com/Maddy4726/table_extract_pdf_bulk.git
+%cd table_extract_pdf_bulk
+!python extract_bf8_daily.py --verbose
+# Output: BF8_merged_all.csv
+```
+
+## Manual folder paths (optional)
+
+```bash
 # Page 1 only (production parameters)
 python extract_bf8_daily.py \
   --input-dir "/path/to/DailyProdReports_FY2024-25" \
@@ -28,19 +76,11 @@ python extract_bf8_daily.py \
   --page 1 \
   --verbose
 
-# Page 2 only (quality + skip sinter + seive + pellet)
-python extract_bf8_daily.py \
-  --input-dir "/path/to/DailyProdReports_FY2024-25" \
-  --output BF8_quality_24-25.csv \
-  --page 2 \
-  --verbose
-
-# Pages 1 + 2 merged into one wide CSV (best for modeling)
+# Pages 1 + 2 merged
 python extract_bf8_daily.py \
   --input-dir \
     "/path/to/DailyProdReports_FY2023-24" \
     "/path/to/DailyProdReports_FY2024-25" \
-    "/path/to/DailyProdReports_FY2025-26" \
   --output BF8_merged.csv \
   --page all \
   --verbose

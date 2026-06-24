@@ -21,6 +21,8 @@ from typing import Any
 import pandas as pd
 import pdfplumber
 
+from drive_paths import load_drive_config, resolve_input_directories
+
 # Parameter label in PDF table -> output CSV column name
 KEY_PARAMS: list[tuple[str, str]] = [
     ("PRODUCTION", "Production_T"),
@@ -615,24 +617,32 @@ def stitch_pdfs_to_csv(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Extract BF-8 daily parameters from production report PDFs into CSV."
+        description=(
+            "Extract BF-8 daily parameters from production report PDFs into CSV. "
+            "With no --input-dir, reads PDF folders from Google Drive (drive_config.json)."
+        )
     )
     parser.add_argument(
         "--input-dir",
         nargs="+",
-        required=True,
-        help="One or more folders containing daily PDF reports.",
+        default=None,
+        help="One or more folders containing daily PDF reports (overrides Drive).",
+    )
+    parser.add_argument(
+        "--from-drive",
+        action="store_true",
+        help="Read PDF folders from Google Drive using drive_config.json.",
     )
     parser.add_argument(
         "--output",
-        default="bf8_daily.csv",
-        help="Output CSV path (default: bf8_daily.csv).",
+        default=None,
+        help="Output CSV path (default: BF8_merged_all.csv from drive config, else bf8_daily.csv).",
     )
     parser.add_argument(
         "--page",
         choices=("1", "2", "all"),
-        default="1",
-        help="Which pages to extract: 1=production, 2=quality, all=merged (default: 1).",
+        default=None,
+        help="Which pages to extract: 1=production, 2=quality, all=merged.",
     )
     parser.add_argument(
         "--recursive",
@@ -654,23 +664,51 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    config = load_drive_config()
 
-    pdf_paths = collect_pdf_paths(args.input_dir, recursive=args.recursive)
+    use_drive = args.from_drive or args.input_dir is None
+    try:
+        input_dirs = resolve_input_directories(
+            input_dirs=args.input_dir,
+            from_drive=use_drive,
+            config=config,
+        )
+    except FileNotFoundError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+
+    if not input_dirs:
+        print(
+            "No input folders specified. Use --input-dir or configure Google Drive.\n"
+            "See drive_config.json.example and README.md.",
+            file=sys.stderr,
+        )
+        return 1
+
+    output_csv = args.output or (config["output_csv"] if use_drive else "bf8_daily.csv")
+    page = args.page or (config["page"] if use_drive else "1")
+
+    if use_drive:
+        print("Using Google Drive PDF folders:")
+        for folder in input_dirs:
+            print(f"  - {folder}")
+
+    pdf_paths = collect_pdf_paths(input_dirs, recursive=args.recursive)
     if not pdf_paths:
         print("No PDF files found.", file=sys.stderr)
         return 1
 
-    page_label = {"1": "page 1 production", "2": "page 2 quality", "all": "pages 1+2"}[args.page]
+    page_label = {"1": "page 1 production", "2": "page 2 quality", "all": "pages 1+2"}[page]
     print(f"Found {len(pdf_paths)} PDF(s). Extracting {page_label}...")
     df = stitch_pdfs_to_csv(
         pdf_paths,
-        args.output,
+        output_csv,
         verbose=args.verbose,
         replace_zero_with_na=not args.keep_zero,
-        page=args.page,
+        page=page,
     )
 
-    print(f"Saved {df.shape[0]} rows x {df.shape[1]} columns -> {args.output}")
+    print(f"Saved {df.shape[0]} rows x {df.shape[1]} columns -> {output_csv}")
     missing_dates = int(df["Date"].isna().sum())
     if missing_dates:
         print(f"Note: {missing_dates} row(s) have unparseable dates.", file=sys.stderr)
