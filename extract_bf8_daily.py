@@ -110,7 +110,7 @@ TEXT_PARAM_ALIASES: dict[str, list[str]] = {
     "COAL DUST INJ.": [r"COAL\s+DUST\s+INJ\."],
     "FUEL RATE": [r"FUEL\s+RATE"],
     "RAFT": [r"\bRAFT\b"],
-    "IRON ORE RATE": [r"IRON\s+ORE\s+RATE"],
+    "IRON ORE RATE": [r"IRON\s+ORE\s+RATE", r"IRON\s+RATE"],
     "SINTER Rt.": [r"SINTER\s+Rt\."],
     "NUT COKE Rt.": [r"NUT\s+COKE\s+Rt\."],
     "SLAG RATE": [r"SLAG\s+RATE"],
@@ -119,7 +119,7 @@ TEXT_PARAM_ALIASES: dict[str, list[str]] = {
     "Mn.Ore Rt.": [r"Mn\.Ore\s+Rt\."],
     "Lime stone Rate": [r"Lime\s+stone\s+Rate"],
     "L.D. SLAG Rt.": [r"L\.D\.\s+SLAG\s+Rt\."],
-    "Quartz Rt.": [r"Quartz\s+Rt\."],
+    "Quartz Rt.": [r"Quartz\s+Rt\.", r"Quartz/DOLOMITE\s+Rt\."],
     "Burden Ratio": [r"Burden\s+Ratio"],
     "Burden Weight / Chg.": [r"Burden\s+Weight\s*/\s*Chg\."],
     "HOT BLAST Temp.": [r"HOT\s+BLAST\s+Temp\."],
@@ -132,8 +132,9 @@ TEXT_PARAM_ALIASES: dict[str, list[str]] = {
 
 # Alternate PDF labels for the same parameter (older report formats).
 PARAM_NAME_ALIASES: dict[str, list[str]] = {
-    "IRON ORE RATE": ["IRON ORE RATE", "IRON ORE RT.", "IRON  ORE RATE"],
+    "IRON ORE RATE": ["IRON ORE RATE", "IRON ORE RT.", "IRON  ORE RATE", "IRON RATE"],
     "Mn.Ore Rt.": ["MN.ORE RT.", "MN ORE RT.", "(A) MN.ORE RT."],
+    "Quartz Rt.": ["QUARTZ RT.", "QUARTZ/DOLOMITE RT.", "QUARTZ/DOLOMITE RT"],
     "PRODUCTION": ["PRODUCTION", "NOITCUDORP"],
     "SLAG RATE": ["SLAG RATE", "SLAG  RATE"],
 }
@@ -211,8 +212,17 @@ def _lookup_param_row(lookup: dict[str, list[Any]], param_name: str) -> list[Any
         alias_key = _normalize_label(alias)
         if alias_key in lookup:
             return lookup[alias_key]
+        for label, row in lookup.items():
+            if label == alias_key or label.endswith(" " + alias_key):
+                return row
 
     if param_name == "IRON ORE RATE":
+        for label, row in lookup.items():
+            if label == "IRON RATE" or label.endswith(" IRON RATE"):
+                return row
+            if "IRON" in label and "RATE" in label and "ORE" not in label:
+                if "TONNES" not in label and "TILL" not in label and "%" not in label:
+                    return row
         for label, row in lookup.items():
             if "IRON" in label and "ORE" in label and ("RATE" in label or "RT." in label):
                 if "TILL" not in label and "%" not in label:
@@ -221,6 +231,11 @@ def _lookup_param_row(lookup: dict[str, list[Any]], param_name: str) -> list[Any
     if param_name == "Mn.Ore Rt.":
         for label, row in lookup.items():
             if "MN" in label and "ORE" in label and "RT" in label:
+                return row
+
+    if param_name == "Quartz Rt.":
+        for label, row in lookup.items():
+            if "QUARTZ" in label and "RT" in label:
                 return row
 
     return None

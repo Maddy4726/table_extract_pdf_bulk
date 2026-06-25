@@ -49,6 +49,15 @@ class ExtractionFixTests(unittest.TestCase):
         self.assertIsNotNone(row)
         self.assertEqual(row[8], "207")
 
+    def test_iron_rate_alias_pdf(self) -> None:
+        sample = "/home/ubuntu/.cursor/projects/workspace/uploads/NEW_P.D.14.25-07_4f8e.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW_P.D.14.25-07 sample not available")
+
+        record = extract_bf8(sample)
+        self.assertEqual(float(record["Iron_ore_rate_kgTHM"]), 414)
+        self.assertEqual(float(record["QuartzRate_kgTHM"]), 0)
+
     def test_sample_pdf_extraction(self) -> None:
         sample = "/workspace/sample_report.pdf"
         if not os.path.exists(sample):
