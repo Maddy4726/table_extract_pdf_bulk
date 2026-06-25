@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import calendar
 import glob
 import os
 import re
@@ -129,8 +130,18 @@ TEXT_PARAM_ALIASES: dict[str, list[str]] = {
     "% OXY. ENRCH.": [r"%\s*OXY\.\s*ENRCH\."],
 }
 
+# Alternate PDF labels for the same parameter (older report formats).
+PARAM_NAME_ALIASES: dict[str, list[str]] = {
+    "IRON ORE RATE": ["IRON ORE RATE", "IRON ORE RT.", "IRON  ORE RATE"],
+    "Mn.Ore Rt.": ["MN.ORE RT.", "MN ORE RT.", "(A) MN.ORE RT."],
+    "PRODUCTION": ["PRODUCTION", "NOITCUDORP"],
+    "SLAG RATE": ["SLAG RATE", "SLAG  RATE"],
+}
+
 # BF # 8 is the 5th furnace value: BF4, BF5, BF6, BF7, BF8.
 BF8_NUMBER_INDEX = 4
+
+BF8_ROW_RE = re.compile(r"BF\s*#\s*-?\s*8", re.IGNORECASE)
 
 
 def _normalize_label(value: Any) -> str:
@@ -142,14 +153,117 @@ def _normalize_label(value: Any) -> str:
 
 def _find_main_table(tables: list[list[list[Any]]]) -> tuple[list[list[Any]] | None, list[Any] | None]:
     """Return the PARAMETERS table and its header row."""
+    best_table: list[list[Any]] | None = None
+    best_header: list[Any] | None = None
+    best_size = 0
+
     for table in tables:
         for row in table:
             if not row:
                 continue
             row_text = " ".join(str(cell) for cell in row if cell)
-            if "PARAMETERS" in row_text and "BF # 8" in row_text:
+            row_upper = row_text.upper()
+            if "PARAMETERS" in row_upper and BF8_ROW_RE.search(row_text):
                 return table, row
-    return None, None
+            if BF8_ROW_RE.search(row_text) and ("UNIT" in row_upper or "SL.NO" in row_upper):
+                return table, row
+
+        has_production = any(
+            row and len(row) > 2 and _normalize_label(row[2]) == "PRODUCTION" for row in table
+        )
+        if not has_production:
+            continue
+
+        for row in table:
+            if not row:
+                continue
+            row_text = " ".join(str(cell) for cell in row if cell)
+            if BF8_ROW_RE.search(row_text):
+                if len(table) > best_size:
+                    best_table, best_header, best_size = table, row, len(table)
+
+    return best_table, best_header
+
+
+def _build_param_lookup(main_table: list[list[Any]]) -> dict[str, list[Any]]:
+    """Map normalized parameter labels to table rows."""
+    lookup: dict[str, list[Any]] = {}
+    for row in main_table:
+        if not row or len(row) < 3:
+            continue
+        labels: list[str] = []
+        if row[2]:
+            labels.append(str(row[2]))
+        if row[1] and row[2]:
+            labels.append(f"{row[1]} {row[2]}")
+        for label in labels:
+            lookup[_normalize_label(label)] = row
+    return lookup
+
+
+def _lookup_param_row(lookup: dict[str, list[Any]], param_name: str) -> list[Any] | None:
+    """Find a parameter row using aliases and fuzzy matching."""
+    key = _normalize_label(param_name)
+    if key in lookup:
+        return lookup[key]
+
+    for alias in PARAM_NAME_ALIASES.get(param_name, []):
+        alias_key = _normalize_label(alias)
+        if alias_key in lookup:
+            return lookup[alias_key]
+
+    if param_name == "IRON ORE RATE":
+        for label, row in lookup.items():
+            if "IRON" in label and "ORE" in label and ("RATE" in label or "RT." in label):
+                if "TILL" not in label and "%" not in label:
+                    return row
+
+    if param_name == "Mn.Ore Rt.":
+        for label, row in lookup.items():
+            if "MN" in label and "ORE" in label and "RT" in label:
+                return row
+
+    return None
+
+
+def _is_bf8_label(value: Any) -> bool:
+    if value is None:
+        return False
+    text = str(value).strip().upper().rstrip("=>").strip()
+    return bool(BF8_ROW_RE.search(text)) or text in {"BF-8", "BF #8"}
+
+
+def _find_bf8_row(table: list[list[Any]]) -> list[Any] | None:
+    for row in table:
+        if row and _is_bf8_label(row[0]):
+            return row
+    return None
+
+
+def _header_lookup(header_row: list[Any] | None) -> dict[str, int]:
+    if not header_row:
+        return {}
+    return {
+        _normalize_label(cell): idx
+        for idx, cell in enumerate(header_row)
+        if cell and str(cell).strip()
+    }
+
+
+def _value_from_header_aliases(
+    header_row: list[Any] | None,
+    data_row: list[Any],
+    aliases: list[str],
+) -> Any:
+    lookup = _header_lookup(header_row)
+    for alias in aliases:
+        idx = lookup.get(_normalize_label(alias))
+        if idx is None or idx >= len(data_row):
+            continue
+        value = data_row[idx]
+        if value is not None and str(value).strip() not in ("", "#DIV/0!", "#DIV/0"):
+            return value
+    return None
 
 
 def _find_bf8_column(header_row: list[Any] | None) -> int:
@@ -179,29 +293,33 @@ def _extract_row_table_values(
     header_row: list[Any] | None,
     data_row: list[Any],
     column_map: list[tuple[str, str]],
+    header_aliases: dict[str, list[str]] | None = None,
 ) -> dict[str, Any]:
     """Map header labels to output columns for a BF # 8 data row."""
     record: dict[str, Any] = {}
-    if not header_row:
+    if not header_row or not data_row:
         return record
 
-    header_lookup = {
-        _normalize_label(cell): idx
-        for idx, cell in enumerate(header_row)
-        if cell and str(cell).strip()
-    }
+    header_aliases = header_aliases or {}
+    lookup = _header_lookup(header_row)
 
     for header_label, out_col in column_map:
-        idx = header_lookup.get(_normalize_label(header_label))
-        if idx is None or idx >= len(data_row):
+        aliases = header_aliases.get(header_label, [header_label])
+        value = _value_from_header_aliases(header_row, data_row, aliases)
+        if value is None:
             record[out_col] = None
             continue
-        value = data_row[idx]
-        if value is not None and str(value).strip() in ("", "#DIV/0!", "#DIV/0"):
-            value = None
         record[out_col] = value
 
     return record
+
+
+SEIVE_HEADER_ALIASES: dict[str, list[str]] = {
+    "-10 mm": ["-10 mm", "- 10 mm", "-10MM"],
+    "- 5 mm": ["- 5 mm", "-5 mm", "- 5MM"],
+    "M.Size": ["M.Size", "M. SIZE", "M.SIZE"],
+    "+40 mm": ["+40 mm", "+ 40 mm", "+40MM"],
+}
 
 
 def _find_skip_sinter_table(
@@ -209,50 +327,49 @@ def _find_skip_sinter_table(
 ) -> tuple[list[Any] | None, list[Any] | None]:
     def is_sinter_header(row: list[Any]) -> bool:
         row_text = " ".join(str(cell) for cell in row if cell)
-        return "% FE" in _normalize_label(row_text) and "BASICITY" in _normalize_label(row_text)
+        normalized = _normalize_label(row_text)
+        return "% FE" in normalized and "BASICITY" in normalized and "SKIP" not in normalized
 
     for table in tables:
         header_row = next((row for row in table if is_sinter_header(row)), None)
-        data_row = next(
-            (row for row in table if row and str(row[0]).strip() == "BF # 8"),
-            None,
-        )
+        data_row = _find_bf8_row(table)
         if header_row and data_row:
             return header_row, data_row
     return None, None
 
 
-def _find_seive_table(
-    tables: list[list[list[Any]]],
-) -> tuple[list[Any] | None, list[Any] | None]:
+def _extract_seive_values(tables: list[list[list[Any]]]) -> dict[str, Any]:
+    """Merge sieve metrics from one or more page-2 tables."""
+    record: dict[str, Any] = {col: None for _, col in SEIVE_COLUMNS}
+
     for table in tables:
-        header_row = next(
-            (
-                row
-                for row in table
-                if row
-                and row[0]
-                and "-10" in str(row[0])
-                and "M.Size" in " ".join(str(c) for c in row if c)
-            ),
-            None,
-        )
-        if header_row is None:
-            header_row = next(
-                (
-                    row
-                    for row in table
-                    if row and any(str(cell).strip() == "- 5 mm" for cell in row if cell)
-                ),
-                None,
-            )
-        data_row = next(
-            (row for row in table if row and str(row[0]).strip() == "BF # 8"),
-            None,
-        )
-        if header_row and data_row:
-            return header_row, data_row
-    return None, None
+        data_row = _find_bf8_row(table)
+        if not data_row:
+            continue
+
+        header_row = None
+        for row in table:
+            if not row:
+                continue
+            row_text = " ".join(str(cell) for cell in row if cell)
+            if any(
+                token in _normalize_label(row_text)
+                for token in ("-10", "- 10", "+40", "- 5", "M.SIZE", "FCE.NO")
+            ):
+                header_row = row
+                break
+        if not header_row:
+            continue
+
+        for header_label, out_col in SEIVE_COLUMNS:
+            if record[out_col] is not None:
+                continue
+            aliases = SEIVE_HEADER_ALIASES.get(header_label, [header_label])
+            value = _value_from_header_aliases(header_row, data_row, aliases)
+            if value is not None:
+                record[out_col] = value
+
+    return record
 
 
 def _find_pellet_table(
@@ -264,13 +381,14 @@ def _find_pellet_table(
         ):
             continue
         header_row = next(
-            (row for row in table if row and str(row[1]).strip() == "Fe"),
+            (
+                row
+                for row in table
+                if row and any(str(cell).strip().upper() == "FE" for cell in row if cell)
+            ),
             None,
         )
-        data_row = next(
-            (row for row in table if row and str(row[0]).strip() == "BF # 8 =>"),
-            None,
-        )
+        data_row = _find_bf8_row(table)
         if header_row and data_row:
             return header_row, data_row
     return None, None
@@ -348,6 +466,11 @@ def _reconcile_bf8_value(
     if text_at_3 is not None and table_bf8 is not None and text_at_3 == str(table_bf8):
         return table_bf8
 
+    if text_numbers and (table_bf8 is None or str(table_bf8).strip() == ""):
+        text_value = _bf8_from_furnace_numbers(text_numbers, bf5_empty=bf5_empty)
+        if text_value is not None:
+            return text_value
+
     if table_bf8 is not None and str(table_bf8).strip() != "":
         return table_bf8
     if table_total is not None and str(table_total).strip() != "":
@@ -365,19 +488,73 @@ def _extract_bf8_from_text(page_text: str, param_name: str) -> list[str]:
     return []
 
 
+def _infer_year_from_path(pdf_path: str, month: int) -> int:
+    """Infer calendar year from DailyProdReports_FY2023-24 style folder names."""
+    fy_match = re.search(r"FY(\d{4})-(\d{2})", pdf_path, re.IGNORECASE)
+    if not fy_match:
+        return 2024
+
+    start_year = int(fy_match.group(1))
+    end_year_suffix = int(fy_match.group(2))
+    end_year = (start_year // 100) * 100 + end_year_suffix
+    if end_year < start_year:
+        end_year = start_year // 100 * 100 + end_year_suffix
+    if end_year < start_year:
+        end_year = start_year + 1
+
+    # Indian fiscal year: Apr–Mar
+    return start_year if month >= 4 else end_year
+
+
+def _date_from_filename(pdf_path: str) -> str | None:
+    """Parse NEW P.D.14.DD-MM.pdf filenames into a DATE- compatible string."""
+    basename = os.path.basename(pdf_path)
+    match = re.search(r"(\d{2})-(\d{2})\.pdf$", basename, re.IGNORECASE)
+    if not match:
+        return None
+
+    day = int(match.group(1))
+    month = int(match.group(2))
+    if not 1 <= month <= 12 or not 1 <= day <= 31:
+        return None
+
+    year = _infer_year_from_path(pdf_path, month)
+    month_name = calendar.month_abbr[month]
+    return f"{day}. {month_name}. {year}"
+
+
 def _extract_date(page_text: str | None, pdf_path: str) -> str:
     if page_text:
-        match = re.search(r"DATE-\s*(\d{1,2}\.\s*\w+\.\s*\d{4})", page_text)
-        if match:
-            return match.group(1).strip()
+        patterns = [
+            r"DATE-\s*(\d{1,2}\.\s*\w+\.\s*\d{4})",
+            r"DATE\s*:\s*(\d{1,2}\.\s*\w+\.\s*\d{4})",
+            r"DATE\s+(\d{1,2}\.\s*\w+\.\s*\d{4})",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, page_text, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
 
-    # Fallback: filename like NEW P.D.14.02-12.pdf -> day-month hint only
-    basename = os.path.basename(pdf_path)
-    file_match = re.search(r"(\d{2})-(\d{2})\.pdf$", basename, re.IGNORECASE)
-    if file_match:
-        return f"{int(file_match.group(1))}-{int(file_match.group(2))} (from filename)"
+    filename_date = _date_from_filename(pdf_path)
+    if filename_date:
+        return filename_date
 
     return "Unknown"
+
+
+def _extract_page_tables(page: Any) -> list[list[list[Any]]]:
+    """Extract tables from a page, retrying with line-based detection if needed."""
+    tables = page.extract_tables() or []
+    if tables:
+        return tables
+
+    return page.extract_tables(
+        table_settings={
+            "vertical_strategy": "lines",
+            "horizontal_strategy": "lines",
+            "intersection_tolerance": 5,
+        }
+    ) or []
 
 
 def extract_bf8(pdf_path: str, verbose: bool = False) -> dict[str, Any]:
@@ -394,7 +571,7 @@ def extract_bf8(pdf_path: str, verbose: bool = False) -> dict[str, Any]:
 
             page = pdf.pages[0]
             page_text = page.extract_text() or ""
-            tables = page.extract_tables() or []
+            tables = _extract_page_tables(page)
     except Exception as exc:
         if verbose:
             print(f"WARNING: failed to open {pdf_path}: {exc}", file=sys.stderr)
@@ -414,11 +591,7 @@ def extract_bf8(pdf_path: str, verbose: bool = False) -> dict[str, Any]:
         empty["Date"] = _extract_date(page_text, pdf_path)
         return empty
 
-    param_lookup: dict[str, list[Any]] = {}
-    for row in main_table:
-        if not row or len(row) <= 2 or not row[2]:
-            continue
-        param_lookup[_normalize_label(row[2])] = row
+    param_lookup = _build_param_lookup(main_table)
 
     bf5_col_idx = -1
     total_col_idx = -1
@@ -435,7 +608,7 @@ def extract_bf8(pdf_path: str, verbose: bool = False) -> dict[str, Any]:
     }
 
     for param_name, col_label in KEY_PARAMS:
-        row = param_lookup.get(_normalize_label(param_name))
+        row = _lookup_param_row(param_lookup, param_name)
         text_numbers = _extract_bf8_from_text(page_text, param_name)
 
         if row is None:
@@ -483,7 +656,7 @@ def extract_bf8_page2(pdf_path: str, verbose: bool = False) -> dict[str, Any]:
             page1_text = pdf.pages[0].extract_text() or ""
             page = pdf.pages[1]
             page_text = page.extract_text() or ""
-            tables = page.extract_tables() or []
+            tables = _extract_page_tables(page)
     except Exception as exc:
         if verbose:
             print(f"WARNING: failed to open {pdf_path}: {exc}", file=sys.stderr)
@@ -526,20 +699,7 @@ def extract_bf8_page2(pdf_path: str, verbose: bool = False) -> dict[str, Any]:
 
     sinter_header, sinter_row = _find_skip_sinter_table(tables)
     record.update(_extract_row_table_values(sinter_header, sinter_row or [], SKIP_SINTER_COLUMNS))
-
-    seive_header, seive_row = _find_seive_table(tables)
-    if seive_header and seive_row:
-        # Seive table repeats M.Size; map the first matching columns explicitly.
-        record.update(
-            {
-                "Seive_minus10mm": seive_row[1] if len(seive_row) > 1 else None,
-                "Seive_minus5mm": seive_row[2] if len(seive_row) > 2 else None,
-                "Seive_MSize": seive_row[3] if len(seive_row) > 3 else None,
-                "Seive_plus40mm": seive_row[4] if len(seive_row) > 4 else None,
-            }
-        )
-    else:
-        record.update({label: None for _, label in SEIVE_COLUMNS})
+    record.update(_extract_seive_values(tables))
 
     pellet_header, pellet_row = _find_pellet_table(tables)
     record.update(_extract_row_table_values(pellet_header, pellet_row or [], PELLET_COLUMNS))
