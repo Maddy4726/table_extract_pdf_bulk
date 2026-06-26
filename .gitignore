@@ -4,6 +4,8 @@ test_output.csv
 test_page2.csv
 test_all.csv
 BF8_merged_all.csv
+bf8_all_rows*.csv
+bf8_all_rows*.xlsx
 fake_drive/
 __pycache__/
 *.pyc

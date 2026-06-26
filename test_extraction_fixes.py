@@ -16,6 +16,7 @@ from extract_bf8_daily import (
     extract_bf8,
     extract_bf8_combined,
 )
+from extract_all_tables import extract_pdf_all_tables, stitch_all_tables
 
 
 class ExtractionFixTests(unittest.TestCase):
@@ -67,6 +68,26 @@ class ExtractionFixTests(unittest.TestCase):
         self.assertEqual(float(record["Production_T"]), 2203)
         self.assertEqual(float(record["Iron_ore_rate_kgTHM"]), 207)
         self.assertEqual(float(record["HM_Si_pct_avg"]), 1.05)
+
+    def test_extract_all_tables_sample(self) -> None:
+        sample = "/workspace/NEW P.D.14.01-01.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW P.D.14.01-01.pdf not available")
+
+        wide_rows, long_rows = extract_pdf_all_tables(sample)
+        self.assertGreater(len(wide_rows), 50)
+        self.assertGreater(len(long_rows), 500)
+        self.assertEqual(wide_rows[0]["source_file"], "NEW P.D.14.01-01.pdf")
+        self.assertIn("page", wide_rows[0])
+        self.assertIn("row_index", wide_rows[0])
+
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "all_rows")
+            df = stitch_all_tables([sample], out, output_format="csv", layout="wide")
+            self.assertGreater(len(df), 50)
+            self.assertIn("table_title", df.columns)
 
 
 if __name__ == "__main__":

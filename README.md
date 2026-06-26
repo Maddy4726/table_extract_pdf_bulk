@@ -11,6 +11,32 @@ python extract_bf8_daily.py --verbose
 
 That's it. The script reads PDFs from the path in `drive_config.json` and writes **`BF8_merged_all.csv`**.
 
+### Extract every table row (for EDA cleanup)
+
+Use `extract_all_tables.py` to dump **all rows from all PDF tables** (pages 1–3) into CSV and/or Excel. Each row keeps metadata (`date`, `source_file`, `page`, `table_index`, `table_title`, `row_index`) plus the extracted cell values.
+
+```bash
+# Sample PDFs in the repo root (NEW P.D.*.pdf)
+python extract_all_tables.py --input-dir . --verbose
+
+# Wide layout (default): one output row per table row -> bf8_all_rows.csv / .xlsx
+python extract_all_tables.py --input-dir . --output bf8_all_rows --format both
+
+# Long layout: one row per non-empty cell (good for filtering in Excel)
+python extract_all_tables.py --input-dir . --layout long --output bf8_all_rows_long --format csv
+
+# Both layouts at once
+python extract_all_tables.py --input-dir . --layout both --output bf8_all_rows --format both
+```
+
+When you pass `--input-dir`, only files matching `NEW P.D.*.pdf` are used by default. Override with `--pdf-pattern "*.pdf"`.
+
+For your full archive on `F:\`, use config mode (same folders as the curated extractor):
+
+```powershell
+python extract_all_tables.py --from-config --recursive --verbose
+```
+
 ### Default PDF folder (your local PC)
 
 ```
@@ -63,4 +89,4 @@ record = extract_bf8_combined(r"F:\...\NEW P.D.14.02-12.pdf")
 ## Requirements
 
 - Python 3.10+
-- `pdfplumber`, `pandas`
+- `pdfplumber`, `pandas`, `openpyxl` (Excel output)
