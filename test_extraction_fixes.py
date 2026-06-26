@@ -17,6 +17,7 @@ from extract_bf8_daily import (
     extract_bf8_combined,
 )
 from extract_hot_metal_slag import extract_hot_metal_slag
+from extract_skip_iron_ore import extract_skip_iron_ore
 
 
 class ExtractionFixTests(unittest.TestCase):
@@ -82,6 +83,20 @@ class ExtractionFixTests(unittest.TestCase):
         self.assertEqual(record["HM_Si_pct_min"], "0.43")
         self.assertEqual(record["HM_Si_pct_max"], "0.99")
         self.assertEqual(record["HM_Si_pct_till"], "0.71")
+
+    def test_skip_iron_ore_extraction(self) -> None:
+        sample = "/workspace/NEW P.D.14.01-01.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW P.D.14.01-01.pdf not available")
+
+        record = extract_skip_iron_ore(sample)
+        self.assertEqual(record["SkipIronOre_Fe_pct"], "63.56")
+        self.assertEqual(record["SkipIronOre_SiO2_pct"], "2.09")
+        self.assertEqual(record["SkipIronOre_Al2O3_pct"], "4.03")
+        self.assertEqual(record["SkipIronOre_Moist_pct"], "4")
+        self.assertEqual(record["SkipIronOre_plus40mm"], "21.02")
+        self.assertEqual(record["SkipIronOre_minus10mm"], "13.75")
+        self.assertEqual(record["SkipIronOre_MSize"], "26.87")
 
 
 if __name__ == "__main__":

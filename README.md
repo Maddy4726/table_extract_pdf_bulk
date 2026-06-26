@@ -25,6 +25,17 @@ python extract_hot_metal_slag.py --from-config --recursive --verbose
 
 Output: **`BF8_hot_metal_slag.csv`** and **`.xlsx`** with a clear date block (`date`, `report_date`, `year`, `month`, `day`) plus quality columns such as `HM_Si_pct_avg`, `HM_S_pct_avg`, `Slag_Basicity_avg`, etc.
 
+### Skip iron ore analysis (table-by-table)
+
+Use `extract_skip_iron_ore.py` for the page-2 **SKIP IRON ORE** chemical and sieve tables (BF # 8 row only).
+
+```powershell
+python extract_skip_iron_ore.py --input-dir . --verbose
+python extract_skip_iron_ore.py --from-config --recursive --verbose
+```
+
+Output: **`BF8_skip_iron_ore.csv`** / **`.xlsx`** with `SkipIronOre_Fe_pct`, `SkipIronOre_SiO2_pct`, `SkipIronOre_Al2O3_pct`, `SkipIronOre_Moist_pct`, `SkipIronOre_plus40mm`, `SkipIronOre_minus10mm`, `SkipIronOre_MSize`, plus the same date columns.
+
 ### Default PDF folder (your local PC)
 
 ```
@@ -63,6 +74,8 @@ python extract_bf8_daily.py --input-dir "F:\...\DailyProdReports_FY2024-25" --pa
 **Page 1 (`extract_bf8_daily.py`):** `Production_T`, `CokeRate_kgTHM`, `FuelRate_kgTHM`, `RAFT_C`, etc.
 
 **Hot metal / slag (`extract_hot_metal_slag.py`):** `HM_Si_pct_avg/min/max`, `HM_S_pct_avg/min/max`, `Slag_MgO_pct_avg/min/max`, `Slag_Al2O3_pct_avg`, `Slag_FeO_pct_avg`, `Slag_K2O_pct_avg`, `Slag_Basicity_avg/min/max`, `HM_P_pct_avg/min/max`, `HM_Si_pct_till`
+
+**Skip iron ore (`extract_skip_iron_ore.py`):** `SkipIronOre_Fe_pct`, `SkipIronOre_SiO2_pct`, `SkipIronOre_Al2O3_pct`, `SkipIronOre_Moist_pct`, `SkipIronOre_plus40mm`, `SkipIronOre_minus10mm`, `SkipIronOre_MSize`
 
 **Page 2 (combined extractor):** `HM_Si_pct_avg`, `HM_S_pct_avg`, `Slag_Basicity_avg`, `SkipSinter_Fe_pct`, etc.
 

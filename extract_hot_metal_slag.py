@@ -23,16 +23,17 @@ import pdfplumber
 
 from drive_paths import load_drive_config, resolve_input_directories
 from extract_bf8_daily import (
-    _date_from_filename,
-    _extract_date,
     _extract_page_tables,
     _find_bf8_column,
     _find_quality_table,
     _normalize_label,
     collect_pdf_paths,
 )
-
-DEFAULT_PDF_PATTERN = "NEW P.D.*.pdf"
+from extract_table_utils import (
+    DEFAULT_PDF_PATTERN,
+    assign_report_date,
+    stitch_records,
+)
 DEFAULT_OUTPUT = "BF8_hot_metal_slag"
 
 # Parameter label in PDF -> output column stem (avg/min/max/till appended).
@@ -107,20 +108,6 @@ def _empty_record(pdf_path: str) -> dict[str, Any]:
     for col in NUMERIC_COLUMNS:
         record[col] = None
     return record
-
-
-def _resolve_report_date(page_text: str, pdf_path: str) -> str:
-    """Return a human-readable date string, preferring the PDF header then the filename."""
-    report_date = _extract_date(page_text, pdf_path)
-    if report_date == "Unknown":
-        report_date = _date_from_filename(pdf_path) or "Unknown"
-
-    parsed = pd.to_datetime(report_date, errors="coerce")
-    if pd.isna(parsed):
-        filename_date = _date_from_filename(pdf_path)
-        if filename_date:
-            return filename_date
-    return report_date
 
 
 def _is_plausible(col: str, value: Any) -> bool:
@@ -300,13 +287,7 @@ def extract_hot_metal_slag(pdf_path: str, verbose: bool = False) -> dict[str, An
             print(f"WARNING: failed to open {pdf_path}: {exc}", file=sys.stderr)
         return record
 
-    report_date = _resolve_report_date(page1_text, pdf_path)
-    parsed = pd.to_datetime(report_date, errors="coerce")
-    if pd.isna(parsed):
-        filename_date = _date_from_filename(pdf_path)
-        if filename_date:
-            report_date = filename_date
-    record["report_date"] = report_date
+    assign_report_date(record, page1_text, pdf_path)
 
     quality_table, quality_header = _find_quality_table(tables)
     if quality_table is not None and quality_header is not None:
@@ -333,29 +314,6 @@ def extract_hot_metal_slag(pdf_path: str, verbose: bool = False) -> dict[str, An
     return record
 
 
-def _finalize_dates(df: pd.DataFrame, pdf_paths: list[str] | None = None) -> pd.DataFrame:
-    df["date"] = pd.to_datetime(df["report_date"], errors="coerce")
-    missing = df["date"].isna()
-    if missing.any() and pdf_paths:
-        path_by_name = {os.path.basename(path): path for path in pdf_paths}
-        for idx in df.index[missing]:
-            source_path = path_by_name.get(str(df.at[idx, "source_file"]))
-            if not source_path:
-                continue
-            filename_date = _date_from_filename(source_path)
-            if filename_date:
-                df.at[idx, "report_date"] = filename_date
-                df.at[idx, "date"] = pd.to_datetime(filename_date, errors="coerce")
-
-    df["year"] = df["date"].dt.year.astype("Int64")
-    df["month"] = df["date"].dt.month.astype("Int64")
-    df["day"] = df["date"].dt.day.astype("Int64")
-
-    meta_cols = ["date", "report_date", "year", "month", "day", "source_file"]
-    other_cols = [col for col in df.columns if col not in meta_cols]
-    return df[meta_cols + other_cols]
-
-
 def stitch_hot_metal_slag(
     pdf_paths: list[str],
     output_path: str,
@@ -364,33 +322,15 @@ def stitch_hot_metal_slag(
     verbose: bool = False,
 ) -> pd.DataFrame:
     records = [extract_hot_metal_slag(path, verbose=verbose) for path in pdf_paths]
-    df = pd.DataFrame(records)
-
-    for col in NUMERIC_COLUMNS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    df = _finalize_dates(df, pdf_paths)
-    df = df.sort_values("date").reset_index(drop=True)
-
-    if replace_zero_with_na:
-        df = df.replace(0, pd.NA)
-
-    base, ext = os.path.splitext(output_path)
-    if output_format == "both":
-        df.to_csv(base + ".csv", index=False)
-        df.to_excel(base + ".xlsx", index=False)
-        if verbose:
-            print(f"Saved CSV  -> {base}.csv")
-            print(f"Saved Excel -> {base}.xlsx")
-    elif output_format == "excel":
-        xlsx_path = base + ".xlsx" if ext.lower() != ".xlsx" else output_path
-        df.to_excel(xlsx_path, index=False)
-    else:
-        csv_path = base + ".csv" if ext.lower() != ".csv" else output_path
-        df.to_csv(csv_path, index=False)
-
-    return df
+    return stitch_records(
+        records,
+        pdf_paths,
+        NUMERIC_COLUMNS,
+        output_path,
+        output_format=output_format,
+        replace_zero_with_na=replace_zero_with_na,
+        verbose=verbose,
+    )
 
 
 def parse_args() -> argparse.Namespace:
