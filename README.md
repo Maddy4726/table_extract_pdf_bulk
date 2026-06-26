@@ -11,6 +11,20 @@ python extract_bf8_daily.py --verbose
 
 That's it. The script reads PDFs from the path in `drive_config.json` and writes **`BF8_merged_all.csv`**.
 
+### Hot metal and slag quality (table-by-table, recommended)
+
+Use `extract_hot_metal_slag.py` to build a **day-by-day BF-8 file** from the page-2 **HOT METAL AND SLAG QUALITY** table only. One clean row per PDF with averages, min/max ranges, and Till % Si.
+
+```powershell
+# Sample PDFs in the repo root
+python extract_hot_metal_slag.py --input-dir . --verbose
+
+# Full 3-year archive on F: drive
+python extract_hot_metal_slag.py --from-config --recursive --verbose
+```
+
+Output: **`BF8_hot_metal_slag.csv`** and **`.xlsx`** with columns such as `HM_Si_pct_avg`, `HM_Si_pct_min`, `HM_Si_pct_max`, `HM_S_pct_avg`, `Slag_MgO_pct_avg`, `Slag_Basicity_avg`, `HM_P_pct_avg`, etc.
+
 ### Default PDF folder (your local PC)
 
 ```
@@ -46,9 +60,11 @@ python extract_bf8_daily.py --input-dir "F:\...\DailyProdReports_FY2024-25" --pa
 
 ## Output columns
 
-**Page 1:** `Production_T`, `CokeRate_kgTHM`, `FuelRate_kgTHM`, `RAFT_C`, etc.
+**Page 1 (`extract_bf8_daily.py`):** `Production_T`, `CokeRate_kgTHM`, `FuelRate_kgTHM`, `RAFT_C`, etc.
 
-**Page 2:** `HM_Si_pct_avg`, `HM_S_pct_avg`, `Slag_Basicity_avg`, `SkipSinter_Fe_pct`, etc.
+**Hot metal / slag (`extract_hot_metal_slag.py`):** `HM_Si_pct_avg/min/max`, `HM_S_pct_avg/min/max`, `Slag_MgO_pct_avg/min/max`, `Slag_Al2O3_pct_avg`, `Slag_FeO_pct_avg`, `Slag_K2O_pct_avg`, `Slag_Basicity_avg/min/max`, `HM_P_pct_avg/min/max`, `HM_Si_pct_till`
+
+**Page 2 (combined extractor):** `HM_Si_pct_avg`, `HM_S_pct_avg`, `Slag_Basicity_avg`, `SkipSinter_Fe_pct`, etc.
 
 See `KEY_PARAMS` and `QUALITY_PARAMS` in `extract_bf8_daily.py` for the full list.
 
@@ -56,11 +72,12 @@ See `KEY_PARAMS` and `QUALITY_PARAMS` in `extract_bf8_daily.py` for the full lis
 
 ```python
 from extract_bf8_daily import extract_bf8_combined
+from extract_hot_metal_slag import extract_hot_metal_slag
 
-record = extract_bf8_combined(r"F:\...\NEW P.D.14.02-12.pdf")
+record = extract_hot_metal_slag(r"F:\...\NEW P.D.14.02-12.pdf")
 ```
 
 ## Requirements
 
 - Python 3.10+
-- `pdfplumber`, `pandas`
+- `pdfplumber`, `pandas`, `openpyxl` (Excel output)

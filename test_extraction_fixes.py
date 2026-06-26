@@ -16,6 +16,7 @@ from extract_bf8_daily import (
     extract_bf8,
     extract_bf8_combined,
 )
+from extract_hot_metal_slag import extract_hot_metal_slag
 
 
 class ExtractionFixTests(unittest.TestCase):
@@ -67,6 +68,19 @@ class ExtractionFixTests(unittest.TestCase):
         self.assertEqual(float(record["Production_T"]), 2203)
         self.assertEqual(float(record["Iron_ore_rate_kgTHM"]), 207)
         self.assertEqual(float(record["HM_Si_pct_avg"]), 1.05)
+
+    def test_hot_metal_slag_extraction(self) -> None:
+        sample = "/workspace/NEW P.D.14.01-01.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW P.D.14.01-01.pdf not available")
+
+        record = extract_hot_metal_slag(sample)
+        self.assertEqual(record["HM_Si_pct_avg"], "0.71")
+        self.assertEqual(record["HM_S_pct_avg"], "0.023")
+        self.assertEqual(record["Slag_Basicity_avg"], "0.97")
+        self.assertEqual(record["HM_Si_pct_min"], "0.43")
+        self.assertEqual(record["HM_Si_pct_max"], "0.99")
+        self.assertEqual(record["HM_Si_pct_till"], "0.71")
 
 
 if __name__ == "__main__":
