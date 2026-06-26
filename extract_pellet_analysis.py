@@ -23,7 +23,6 @@ import pdfplumber
 from drive_paths import load_drive_config, resolve_input_directories
 from extract_bf8_daily import (
     _extract_page_tables,
-    _find_bf8_row,
     _normalize_label,
     _value_from_header_aliases,
     collect_pdf_paths,
@@ -64,13 +63,13 @@ NUMERIC_COLUMNS = [col for _, col in PELLET_COLUMNS]
 
 VALUE_RANGES: dict[str, tuple[float, float]] = {
     "Pellet_Fe_pct": (50.0, 70.0),
-    "Pellet_SiO2_pct": (1.0, 15.0),
-    "Pellet_Al2O3_pct": (1.0, 10.0),
+    "Pellet_SiO2_pct": (0.5, 15.0),
+    "Pellet_Al2O3_pct": (0.5, 10.0),
     "Pellet_CaO_pct": (0.0, 5.0),
     "Pellet_MgO_pct": (0.0, 5.0),
-    "Pellet_plus10mm": (15.0, 80.0),
-    "Pellet_minus5mm": (0.0, 20.0),
-    "Pellet_MSize": (5.0, 25.0),
+    "Pellet_plus10mm": (0.0, 100.0),
+    "Pellet_minus5mm": (0.0, 100.0),
+    "Pellet_MSize": (0.0, 100.0),
     "Pellet_Basicity": (0.0, 25.0),
 }
 
@@ -121,18 +120,71 @@ def _is_pellet_header(row: list[Any]) -> bool:
     )
 
 
-def _is_data_row(row: list[Any]) -> bool:
-    if not row:
+def _is_pellet_title_row(row: list[Any]) -> bool:
+    if not row or not row[0]:
+        return False
+    return "PELLET" in str(row[0]).upper()
+
+
+def _is_pellet_header_line(line: str) -> bool:
+    upper = line.upper()
+    return bool(re.search(r"\bFE\b", upper)) and "SIO2" in upper and "AL2O3" in upper and "CAO" in upper
+
+
+def _numeric_cells(row: list[Any]) -> list[str]:
+    values: list[str] = []
+    for cell in row:
+        cleaned = _clean_cell(cell)
+        if cleaned is not None and re.fullmatch(r"-?\d+(?:\.\d+)?", str(cleaned)):
+            values.append(str(cleaned))
+    return values
+
+
+def _is_numeric_data_row(row: list[Any]) -> bool:
+    if not row or _is_pellet_title_row(row):
         return False
     label = _normalize_label(row[0]) if row[0] else ""
-    if label.startswith("BF"):
-        return True
-    numeric_cells = [
-        cell
-        for cell in row
-        if _clean_cell(cell) is not None and re.fullmatch(r"-?\d+(?:\.\d+)?", str(_clean_cell(cell)))
-    ]
-    return len(numeric_cells) >= 3
+    if label.startswith("BF") and not re.search(r"BF\s*#\s*8\b", str(row[0]), re.IGNORECASE):
+        return False
+    return len(_numeric_cells(row)) >= 3
+
+
+def _title_targets_bf8(table: list[list[Any]]) -> bool:
+    for row in table:
+        if _is_pellet_title_row(row):
+            return bool(re.search(r"BF\s*#\s*8\b", str(row[0]), re.IGNORECASE))
+    return False
+
+
+def _find_pellet_data_row(
+    table: list[list[Any]],
+    header_row: list[Any],
+) -> list[Any] | None:
+    """Return the BF-8 pellet data row, ignoring title rows that also mention BF # 8."""
+    for row in table:
+        if not row or not row[0] or _is_pellet_title_row(row):
+            continue
+        label = str(row[0]).strip()
+        if re.fullmatch(r"BF\s*#\s*8\s*=>?", label, re.IGNORECASE) and len(_numeric_cells(row)) >= 3:
+            return row
+
+    header_idx = table.index(header_row)
+    for row in table[header_idx + 1 :]:
+        if _is_numeric_data_row(row):
+            if row[0] and str(row[0]).strip() and not re.fullmatch(
+                r"BF\s*#\s*8\s*=>?", str(row[0]).strip(), re.IGNORECASE
+            ):
+                # Unlabeled numeric row right under the header.
+                if _title_targets_bf8(table) or not row[0] or not str(row[0]).strip().startswith("BF"):
+                    return row
+            elif re.fullmatch(r"BF\s*#\s*8\s*=>?", str(row[0]).strip(), re.IGNORECASE):
+                return row
+
+    return None
+
+
+def _is_data_row(row: list[Any]) -> bool:
+    return _is_numeric_data_row(row)
 
 
 def _extract_mapped_values(
@@ -158,11 +210,11 @@ def _find_pellet_table(
         if header_row is None:
             continue
 
-        data_row = _find_bf8_row(table)
+        data_row = _find_pellet_data_row(table, header_row)
         if data_row is None:
             header_idx = table.index(header_row)
             for row in table[header_idx + 1 :]:
-                if _is_data_row(row):
+                if _is_numeric_data_row(row):
                     data_row = row
                     break
 
@@ -206,6 +258,9 @@ def _extract_from_page_text(page_text: str) -> dict[str, Any]:
         return record
 
     in_section = False
+    title_has_bf8 = False
+    past_header = False
+
     for line in page_text.splitlines():
         stripped = line.strip()
         if not stripped:
@@ -214,6 +269,8 @@ def _extract_from_page_text(page_text: str) -> dict[str, Any]:
 
         if "PELLET CHEMICAL" in upper:
             in_section = True
+            title_has_bf8 = bool(re.search(r"BF\s*#\s*8\b", stripped, re.IGNORECASE))
+            past_header = False
             continue
 
         if in_section and ("SKIP IRON ORE" in upper or "SKIP I/ORE" in upper):
@@ -223,10 +280,21 @@ def _extract_from_page_text(page_text: str) -> dict[str, Any]:
             continue
 
         match = re.search(r"BF\s*#\s*8\s*=>?\s*(.*)$", stripped, re.IGNORECASE)
-        if not match:
+        if match:
+            return _assign_tokens_to_columns(_tokenize_pellet_values(match.group(1)))
+
+        if _is_pellet_header_line(stripped):
+            past_header = True
             continue
 
-        return _assign_tokens_to_columns(_tokenize_pellet_values(match.group(1)))
+        if past_header and title_has_bf8:
+            if re.search(r"BF\s*#\s*[47]\b", stripped, re.IGNORECASE):
+                break
+            if re.search(r"BF\s*#\s*\d", stripped, re.IGNORECASE):
+                continue
+            tokens = _tokenize_pellet_values(stripped)
+            if len(tokens) >= 3:
+                return _assign_tokens_to_columns(tokens)
 
     return record
 

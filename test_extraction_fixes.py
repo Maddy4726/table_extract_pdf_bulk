@@ -111,6 +111,18 @@ class ExtractionFixTests(unittest.TestCase):
         self.assertEqual(record["Pellet_MSize"], "11.00")
         self.assertEqual(record["Pellet_Basicity"], "0.11")
 
+    def test_pellet_analysis_bf8_in_title_format(self) -> None:
+        sample = "/home/ubuntu/.cursor/projects/workspace/uploads/NEW_P.D.14.17-06_570f.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW_P.D.14.17-06 sample not available")
+
+        record = extract_pellet_analysis(sample)
+        self.assertEqual(record["Pellet_Fe_pct"], "61.08")
+        self.assertEqual(record["Pellet_SiO2_pct"], "6.57")
+        self.assertEqual(record["Pellet_plus10mm"], "53.90")
+        self.assertEqual(record["Pellet_MSize"], "60.30")
+        self.assertEqual(record["Pellet_Basicity"], "0.17")
+
 
 if __name__ == "__main__":
     raise SystemExit(unittest.main())
