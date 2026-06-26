@@ -18,6 +18,7 @@ from extract_bf8_daily import (
 )
 from extract_hot_metal_slag import extract_hot_metal_slag
 from extract_skip_iron_ore import extract_skip_iron_ore
+from extract_pellet_analysis import extract_pellet_analysis
 
 
 class ExtractionFixTests(unittest.TestCase):
@@ -97,6 +98,18 @@ class ExtractionFixTests(unittest.TestCase):
         self.assertEqual(record["SkipIronOre_plus40mm"], "21.02")
         self.assertEqual(record["SkipIronOre_minus10mm"], "13.75")
         self.assertEqual(record["SkipIronOre_MSize"], "26.87")
+
+    def test_pellet_analysis_extraction(self) -> None:
+        sample = "/workspace/NEW P.D.14.01-01.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW P.D.14.01-01.pdf not available")
+
+        record = extract_pellet_analysis(sample)
+        self.assertEqual(record["Pellet_Fe_pct"], "61.23")
+        self.assertEqual(record["Pellet_SiO2_pct"], "6.42")
+        self.assertEqual(record["Pellet_plus10mm"], "52.80")
+        self.assertEqual(record["Pellet_MSize"], "11.00")
+        self.assertEqual(record["Pellet_Basicity"], "0.11")
 
 
 if __name__ == "__main__":

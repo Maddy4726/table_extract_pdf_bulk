@@ -8,6 +8,8 @@ BF8_hot_metal_slag*.csv
 BF8_hot_metal_slag*.xlsx
 BF8_skip_iron_ore*.csv
 BF8_skip_iron_ore*.xlsx
+BF8_pellet_analysis*.csv
+BF8_pellet_analysis*.xlsx
 fake_drive/
 __pycache__/
 *.pyc
