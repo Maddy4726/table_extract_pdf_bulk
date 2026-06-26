@@ -10,6 +10,8 @@ BF8_skip_iron_ore*.csv
 BF8_skip_iron_ore*.xlsx
 BF8_pellet_analysis*.csv
 BF8_pellet_analysis*.xlsx
+BF8_skip_sinter*.csv
+BF8_skip_sinter*.xlsx
 fake_drive/
 __pycache__/
 *.pyc

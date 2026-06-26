@@ -47,6 +47,19 @@ python extract_pellet_analysis.py --from-config --recursive --verbose
 
 Output: **`BF8_pellet_analysis.csv`** / **`.xlsx`** with `Pellet_Fe_pct`, `Pellet_SiO2_pct`, `Pellet_Al2O3_pct`, `Pellet_CaO_pct`, `Pellet_MgO_pct`, `Pellet_plus10mm`, `Pellet_minus5mm`, `Pellet_MSize`, `Pellet_Basicity`, plus date columns.
 
+### Skip sinter chemical analysis (table-by-table)
+
+Use `extract_skip_sinter.py` for the page-2 **SKIP SINTER** chemistry table (`% Fe`, `% SiO2`, `% Al2O3`, `% CaO`, `% MgO`, `Basicity`) on the BF # 8 row.
+
+```powershell
+python extract_skip_sinter.py --input-dir . --verbose
+python extract_skip_sinter.py --from-config --recursive --verbose
+```
+
+Output: **`BF8_skip_sinter.csv`** / **`.xlsx`**
+
+Note: many newer daily PDFs omit this chemical block and only show **% fines in BF skip sinter** (a separate table — next script to add).
+
 ### Default PDF folder (your local PC)
 
 ```
@@ -89,6 +102,8 @@ python extract_bf8_daily.py --input-dir "F:\...\DailyProdReports_FY2024-25" --pa
 **Skip iron ore (`extract_skip_iron_ore.py`):** `SkipIronOre_Fe_pct`, `SkipIronOre_SiO2_pct`, `SkipIronOre_Al2O3_pct`, `SkipIronOre_Moist_pct`, `SkipIronOre_plus40mm`, `SkipIronOre_minus10mm`, `SkipIronOre_MSize`
 
 **Pellet analysis (`extract_pellet_analysis.py`):** `Pellet_Fe_pct`, `Pellet_SiO2_pct`, `Pellet_Al2O3_pct`, `Pellet_CaO_pct`, `Pellet_MgO_pct`, `Pellet_plus10mm`, `Pellet_minus5mm`, `Pellet_MSize`, `Pellet_Basicity`
+
+**Skip sinter chemistry (`extract_skip_sinter.py`):** `SkipSinter_Fe_pct`, `SkipSinter_SiO2_pct`, `SkipSinter_Al2O3_pct`, `SkipSinter_CaO_pct`, `SkipSinter_MgO_pct`, `SkipSinter_Basicity`
 
 **Page 2 (combined extractor):** `HM_Si_pct_avg`, `HM_S_pct_avg`, `Slag_Basicity_avg`, `SkipSinter_Fe_pct`, etc.
 
