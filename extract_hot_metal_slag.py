@@ -23,6 +23,7 @@ import pdfplumber
 
 from drive_paths import load_drive_config, resolve_input_directories
 from extract_bf8_daily import (
+    _date_from_filename,
     _extract_date,
     _extract_page_tables,
     _find_bf8_column,
@@ -68,18 +69,85 @@ TEXT_PARAM_ALIASES: dict[str, list[str]] = {
     "Till % 'Si'": [r"Till\s*%\s*'Si'", r"Till\s*%\s*Si"],
 }
 
+# Plausible BF-8 ranges; values outside these are treated as extraction errors.
+VALUE_RANGES: dict[str, tuple[float, float]] = {
+    "HM_Si_pct_avg": (0.1, 2.5),
+    "HM_Si_pct_min": (0.05, 2.5),
+    "HM_Si_pct_max": (0.05, 2.5),
+    "HM_Si_pct_till": (0.1, 2.5),
+    "HM_S_pct_avg": (0.005, 0.15),
+    "HM_S_pct_min": (0.005, 0.15),
+    "HM_S_pct_max": (0.005, 0.15),
+    "Slag_MgO_pct_avg": (4.0, 12.0),
+    "Slag_MgO_pct_min": (4.0, 12.0),
+    "Slag_MgO_pct_max": (4.0, 12.0),
+    "Slag_Al2O3_pct_avg": (12.0, 25.0),
+    "Slag_FeO_pct_avg": (0.2, 2.5),
+    "Slag_K2O_pct_avg": (0.1, 1.5),
+    "Slag_Basicity_avg": (0.5, 2.5),
+    "Slag_Basicity_min": (0.5, 2.5),
+    "Slag_Basicity_max": (0.5, 2.5),
+    "HM_P_pct_avg": (0.05, 0.25),
+    "HM_P_pct_min": (0.05, 0.25),
+    "HM_P_pct_max": (0.05, 0.25),
+}
+
+DATE_COLUMNS = ("date", "report_date", "year", "month", "day")
+
 # BF-8 is the 5th furnace column in page-2 text lines (BF-4 .. BF-8).
 BF8_TEXT_VALUE_INDEX = 4
 
 
 def _empty_record(pdf_path: str) -> dict[str, Any]:
     record: dict[str, Any] = {
+        "report_date": None,
         "date": None,
         "source_file": os.path.basename(pdf_path),
     }
     for col in NUMERIC_COLUMNS:
         record[col] = None
     return record
+
+
+def _resolve_report_date(page_text: str, pdf_path: str) -> str:
+    """Return a human-readable date string, preferring the PDF header then the filename."""
+    report_date = _extract_date(page_text, pdf_path)
+    if report_date == "Unknown":
+        report_date = _date_from_filename(pdf_path) or "Unknown"
+
+    parsed = pd.to_datetime(report_date, errors="coerce")
+    if pd.isna(parsed):
+        filename_date = _date_from_filename(pdf_path)
+        if filename_date:
+            return filename_date
+    return report_date
+
+
+def _is_plausible(col: str, value: Any) -> bool:
+    if value is None:
+        return True
+    bounds = VALUE_RANGES.get(col)
+    if not bounds:
+        return True
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return False
+    low, high = bounds
+    return low <= number <= high
+
+
+def _sanitize_record(record: dict[str, Any], text_values: dict[str, Any]) -> None:
+    """Drop out-of-range table values and back-fill from text when possible."""
+    for col in NUMERIC_COLUMNS:
+        value = record.get(col)
+        if value is None or _is_plausible(col, value):
+            continue
+        fallback = text_values.get(col)
+        if fallback is not None and _is_plausible(col, fallback):
+            record[col] = fallback
+        else:
+            record[col] = None
 
 
 def _parse_min_max(value: Any) -> tuple[Any, Any]:
@@ -232,7 +300,13 @@ def extract_hot_metal_slag(pdf_path: str, verbose: bool = False) -> dict[str, An
             print(f"WARNING: failed to open {pdf_path}: {exc}", file=sys.stderr)
         return record
 
-    record["date"] = _extract_date(page1_text, pdf_path)
+    report_date = _resolve_report_date(page1_text, pdf_path)
+    parsed = pd.to_datetime(report_date, errors="coerce")
+    if pd.isna(parsed):
+        filename_date = _date_from_filename(pdf_path)
+        if filename_date:
+            report_date = filename_date
+    record["report_date"] = report_date
 
     quality_table, quality_header = _find_quality_table(tables)
     if quality_table is not None and quality_header is not None:
@@ -240,11 +314,12 @@ def extract_hot_metal_slag(pdf_path: str, verbose: bool = False) -> dict[str, An
     elif verbose:
         print(f"WARNING: quality table not found in {pdf_path}; trying text fallback", file=sys.stderr)
 
-    # Fill any gaps from plain text (table cell boundaries are sometimes lost).
     text_values = _extract_from_page_text(page_text)
     for col, value in text_values.items():
         if record.get(col) is None and value is not None:
             record[col] = value
+
+    _sanitize_record(record, text_values)
 
     missing = [col for col in NUMERIC_COLUMNS if record.get(col) is None]
     if missing and verbose:
@@ -256,6 +331,29 @@ def extract_hot_metal_slag(pdf_path: str, verbose: bool = False) -> dict[str, An
         )
 
     return record
+
+
+def _finalize_dates(df: pd.DataFrame, pdf_paths: list[str] | None = None) -> pd.DataFrame:
+    df["date"] = pd.to_datetime(df["report_date"], errors="coerce")
+    missing = df["date"].isna()
+    if missing.any() and pdf_paths:
+        path_by_name = {os.path.basename(path): path for path in pdf_paths}
+        for idx in df.index[missing]:
+            source_path = path_by_name.get(str(df.at[idx, "source_file"]))
+            if not source_path:
+                continue
+            filename_date = _date_from_filename(source_path)
+            if filename_date:
+                df.at[idx, "report_date"] = filename_date
+                df.at[idx, "date"] = pd.to_datetime(filename_date, errors="coerce")
+
+    df["year"] = df["date"].dt.year.astype("Int64")
+    df["month"] = df["date"].dt.month.astype("Int64")
+    df["day"] = df["date"].dt.day.astype("Int64")
+
+    meta_cols = ["date", "report_date", "year", "month", "day", "source_file"]
+    other_cols = [col for col in df.columns if col not in meta_cols]
+    return df[meta_cols + other_cols]
 
 
 def stitch_hot_metal_slag(
@@ -272,7 +370,7 @@ def stitch_hot_metal_slag(
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = _finalize_dates(df, pdf_paths)
     df = df.sort_values("date").reset_index(drop=True)
 
     if replace_zero_with_na:

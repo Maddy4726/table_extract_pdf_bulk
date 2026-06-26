@@ -75,6 +75,7 @@ class ExtractionFixTests(unittest.TestCase):
             self.skipTest("NEW P.D.14.01-01.pdf not available")
 
         record = extract_hot_metal_slag(sample)
+        self.assertEqual(record["report_date"], "1. Jan. 2025")
         self.assertEqual(record["HM_Si_pct_avg"], "0.71")
         self.assertEqual(record["HM_S_pct_avg"], "0.023")
         self.assertEqual(record["Slag_Basicity_avg"], "0.97")

@@ -23,7 +23,7 @@ python extract_hot_metal_slag.py --input-dir . --verbose
 python extract_hot_metal_slag.py --from-config --recursive --verbose
 ```
 
-Output: **`BF8_hot_metal_slag.csv`** and **`.xlsx`** with columns such as `HM_Si_pct_avg`, `HM_Si_pct_min`, `HM_Si_pct_max`, `HM_S_pct_avg`, `Slag_MgO_pct_avg`, `Slag_Basicity_avg`, `HM_P_pct_avg`, etc.
+Output: **`BF8_hot_metal_slag.csv`** and **`.xlsx`** with a clear date block (`date`, `report_date`, `year`, `month`, `day`) plus quality columns such as `HM_Si_pct_avg`, `HM_S_pct_avg`, `Slag_Basicity_avg`, etc.
 
 ### Default PDF folder (your local PC)
 
