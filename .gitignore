@@ -18,6 +18,8 @@ BF8_coke_quality*.csv
 BF8_coke_quality*.xlsx
 BF8_sinter_plant*.csv
 BF8_sinter_plant*.xlsx
+BF8_production_parameters*.csv
+BF8_production_parameters*.xlsx
 fake_drive/
 __pycache__/
 *.pyc

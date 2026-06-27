@@ -95,6 +95,23 @@ python extract_sinter_plant.py --from-config --recursive --verbose
 
 Output: **`BF8_sinter_plant.csv`** / **`.xlsx`** with day-average and shift-sample columns such as `SinterPlant2_DayAvg_Fe_pct`, `SinterPlant2_AO_Basicity`, `SinterPlant3_C2_Fe_pct`, etc.
 
+### Production parameters — complete page 1 table (recommended)
+
+Use `extract_production_parameters.py` for the **full page-1 PARAMETERS table** for BF # 8 — not just the 23 summary fields from `extract_bf8_daily.py`.
+
+```powershell
+python extract_production_parameters.py --input-dir . --verbose
+python extract_production_parameters.py --from-config --recursive --verbose
+```
+
+Output: **`BF8_production_parameters.csv`** / **`.xlsx`** with ~100+ columns such as:
+
+- `Prod_01_production`, `Prod_01_1a_hMLoads`, `Prod_01_bestDailyProd`
+- `Prod_07_a_cokeRt`, `Prod_07_a_cokeRt_till`, `Prod_07_a_cokeRt_yearlyRate`
+- `Prod_11_11a_fuelRate`, `Prod_12_a_slagRate`, `Prod_13_a_ironOreRate`
+- `Prod_20_burdenRatio`, `Prod_26_blastRate`, `Prod_32_tD`, `Prod_40_a_pctOxyEnrch`
+- Till / Yearly Rate sub-rows, operating times, and more
+
 ### Default PDF folder (your local PC)
 
 ```
@@ -145,6 +162,8 @@ python extract_bf8_daily.py --input-dir "F:\...\DailyProdReports_FY2024-25" --pa
 **Coke quality (`extract_coke_quality.py`):** `CokeQuality_CSP1_Moisture` … `CokeQuality_CSP4_CRI`, `CokeQuality_BF8_Mix_CSR`, `CokeQuality_BF8_Mix_CRI`
 
 **Sinter plant chemistry (`extract_sinter_plant.py`):** `SinterPlant2_DayAvg_Fe_pct`, `SinterPlant2_AO_Basicity`, `SinterPlant3_DayAvg_Fe_pct`, shift samples `AO`–`C2`, etc.
+
+**Production parameters (`extract_production_parameters.py`):** complete page-1 PARAMETERS table — `Prod_01_production`, `Prod_07_a_cokeRt`, `Prod_11_11a_fuelRate`, `Prod_12_a_slagRate`, Till/Yearly Rate rows, blast, downtime, and ~100+ more columns.
 
 **Page 2 (combined extractor):** `HM_Si_pct_avg`, `HM_S_pct_avg`, `Slag_Basicity_avg`, `SkipSinter_Fe_pct`, etc.
 

@@ -28,6 +28,7 @@ from extract_skip_fines import (
 )
 from extract_coke_quality import extract_coke_quality
 from extract_sinter_plant import extract_sinter_plant
+from extract_production_parameters import extract_production_parameters
 
 
 class ExtractionFixTests(unittest.TestCase):
@@ -297,6 +298,34 @@ class ExtractionFixTests(unittest.TestCase):
         self.assertEqual(record["SinterPlant2_DayAvg_Fe_pct"], "48.11")
         self.assertEqual(record["SinterPlant3_DayAvg_Fe_pct"], "48.84")
         self.assertIsNone(record["SinterPlant2_C1_Fe_pct"])
+
+    def test_production_parameters_complete_extraction(self) -> None:
+        sample = "/workspace/NEW P.D.14.01-01.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW P.D.14.01-01.pdf not available")
+
+        record = extract_production_parameters(sample)
+        self.assertEqual(record["Prod_01_production"], "8021")
+        self.assertEqual(record["Prod_07_a_cokeRt"], "385")
+        self.assertEqual(record["Prod_11_11a_fuelRate"], "562")
+        self.assertEqual(record["Prod_12_a_slagRate"], "545")
+        self.assertEqual(record["Prod_13_a_ironOreRate"], "176")
+        self.assertEqual(record["Prod_32_tD"], "36:40:00")
+        self.assertEqual(record["Prod_07_a_cokeRt_till"], "385")
+        self.assertGreater(
+            sum(1 for key, value in record.items() if key.startswith("Prod_") and value is not None),
+            90,
+        )
+
+    def test_production_parameters_2023_format(self) -> None:
+        sample = "/home/ubuntu/.cursor/projects/workspace/uploads/NEW_P.D.14.17-06_570f.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW_P.D.14.17-06 sample not available")
+
+        record = extract_production_parameters(sample)
+        self.assertIsNotNone(record.get("Prod_01_production"))
+        self.assertIsNotNone(record.get("Prod_07_a_cokeRt"))
+        self.assertIsNotNone(record.get("Prod_13_a_ironOreRate"))
 
 
 if __name__ == "__main__":
