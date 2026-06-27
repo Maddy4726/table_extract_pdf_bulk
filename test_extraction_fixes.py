@@ -20,6 +20,12 @@ from extract_hot_metal_slag import extract_hot_metal_slag
 from extract_skip_iron_ore import extract_skip_iron_ore
 from extract_pellet_analysis import extract_pellet_analysis
 from extract_skip_sinter import extract_skip_sinter
+from extract_skip_fines import (
+    _extract_from_merged_table,
+    _extract_from_page_text,
+    _find_fines_tables,
+    extract_skip_fines,
+)
 
 
 class ExtractionFixTests(unittest.TestCase):
@@ -134,6 +140,95 @@ class ExtractionFixTests(unittest.TestCase):
         self.assertEqual(record["SkipSinter_SiO2_pct"], "7.84")
         self.assertEqual(record["SkipSinter_CaO_pct"], "14.93")
         self.assertEqual(record["SkipSinter_Basicity"], "1.90")
+
+    def test_skip_fines_merged_table(self) -> None:
+        sample = "/workspace/NEW P.D.14.01-01.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW P.D.14.01-01.pdf not available")
+
+        record = extract_skip_fines(sample)
+        self.assertEqual(record["SkipSinterFines_minus10mm"], "30.03")
+        self.assertEqual(record["SkipSinterFines_ShiftA"], "49.80")
+        self.assertEqual(record["SkipCokeFines_minus40mm"], "41.83")
+        self.assertEqual(record["SkipCokeFines_MSize"], "43.17")
+
+    def test_skip_fines_split_tables(self) -> None:
+        sample = "/workspace/NEW P.D.14.01-04.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW P.D.14.01-04.pdf not available")
+
+        record = extract_skip_fines(sample)
+        self.assertEqual(record["SkipSinterFines_minus10mm"], "36.70")
+        self.assertEqual(record["SkipSinterFines_minus5mm"], "10.00")
+        self.assertEqual(record["SkipCokeFines_minus40mm"], "41.30")
+        self.assertEqual(record["SkipCokeFines_minus25mm"], "1.30")
+
+    def test_skip_fines_wide_table(self) -> None:
+        sample = "/workspace/sample_report.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("sample_report.pdf not available")
+
+        record = extract_skip_fines(sample)
+        self.assertEqual(record["SkipSinterFines_minus10mm"], "27.10")
+        self.assertEqual(record["SkipSinterFines_MSize"], "16.00")
+        self.assertEqual(record["SkipCokeFines_minus40mm"], "44.25")
+        self.assertEqual(record["SkipCokeFines_MSize"], "42.60")
+        self.assertIsNone(record["SkipSinterFines_ShiftA"])
+
+    def test_skip_fines_text_total_fe_layout(self) -> None:
+        page_text = """
+        % FINES IN BF SKIP SINTER
+        Fce.No. -10 mm - 5 mm M.Size TOTAL Fe
+        BF # 8 30.10 4.20 15.30 49.60
+        COKE QUALITY
+        """
+        record = _extract_from_page_text(page_text)
+        self.assertEqual(record["SkipSinterFines_minus10mm"], "30.10")
+        self.assertEqual(record["SkipSinterFines_TotalFe"], "49.60")
+        self.assertIsNone(record["SkipSinterFines_ShiftA"])
+
+    def test_skip_fines_split_table_helpers(self) -> None:
+        sinter_table = [
+            ["Fce.No.", "-10 mm", "- 5 mm", "M.Size", "TOTAL Fe"],
+            ["BF # 8", "30.10", "4.20", "15.30", "49.60"],
+        ]
+        coke_table = [
+            ["Fce.No.", "-40 mm", "- 25 mm", "M.Size"],
+            ["BF # 8", "41.00", "2.00", "43.00"],
+        ]
+        sinter_values, coke_values = _find_fines_tables([sinter_table, coke_table])
+        self.assertEqual(sinter_values["SkipSinterFines_TotalFe"], "49.60")
+        self.assertEqual(coke_values["SkipCokeFines_minus40mm"], "41.00")
+
+    def test_skip_fines_wide_table_helpers(self) -> None:
+        header = [
+            "Fce.No.",
+            "-10 mm",
+            "- 5 mm",
+            "M.Size",
+            "+40 mm",
+            "- 10 mm",
+            "M.Size",
+            "-40 mm",
+            "- 25 mm",
+            "M.Size",
+        ]
+        data = ["BF # 8", "27.10", "4.35", "16.00", "13.90", "11.10", "25.90", "44.25", "2.35", "42.60"]
+        record = _extract_from_merged_table(header, data)
+        self.assertEqual(record["SkipSinterFines_minus10mm"], "27.10")
+        self.assertEqual(record["SkipCokeFines_minus40mm"], "44.25")
+        self.assertIsNone(record["SkipSinterFines_ShiftA"])
+
+    def test_skip_fines_2023_format_pdf(self) -> None:
+        sample = "/home/ubuntu/.cursor/projects/workspace/uploads/NEW_P.D.14.17-06_570f.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW_P.D.14.17-06 sample not available")
+
+        record = extract_skip_fines(sample)
+        self.assertEqual(record["SkipSinterFines_minus10mm"], "29.9")
+        self.assertEqual(record["SkipSinterFines_TotalFe"], "49.69")
+        self.assertIsNone(record["SkipSinterFines_ShiftA"])
+        self.assertEqual(record["SkipCokeFines_minus40mm"], "41.60")
 
 
 if __name__ == "__main__":

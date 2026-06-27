@@ -12,6 +12,8 @@ BF8_pellet_analysis*.csv
 BF8_pellet_analysis*.xlsx
 BF8_skip_sinter*.csv
 BF8_skip_sinter*.xlsx
+BF8_skip_fines*.csv
+BF8_skip_fines*.xlsx
 fake_drive/
 __pycache__/
 *.pyc
