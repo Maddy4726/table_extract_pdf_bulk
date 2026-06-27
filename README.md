@@ -84,6 +84,17 @@ python extract_coke_quality.py --from-config --recursive --verbose
 
 Output: **`BF8_coke_quality.csv`** / **`.xlsx`** with `CokeQuality_CSP1_Moisture` … `CokeQuality_CSP4_CRI` and `CokeQuality_BF8_Mix_CSR`, `CokeQuality_BF8_Mix_CRI`, plus date columns.
 
+### Sinter plant chemical analysis (table-by-table)
+
+Use `extract_sinter_plant.py` for the page-2 **SINTER PLANT-2** and **SINTER PLANT-3** chemistry tables (% Fe, % FeO, % SiO2, % Al2O3, % CaO, % MgO, % MnO, CaO-SiO2, Basicity).
+
+```powershell
+python extract_sinter_plant.py --input-dir . --verbose
+python extract_sinter_plant.py --from-config --recursive --verbose
+```
+
+Output: **`BF8_sinter_plant.csv`** / **`.xlsx`** with day-average and shift-sample columns such as `SinterPlant2_DayAvg_Fe_pct`, `SinterPlant2_AO_Basicity`, `SinterPlant3_C2_Fe_pct`, etc.
+
 ### Default PDF folder (your local PC)
 
 ```
@@ -132,6 +143,8 @@ python extract_bf8_daily.py --input-dir "F:\...\DailyProdReports_FY2024-25" --pa
 **Skip fines (`extract_skip_fines.py`):** `SkipSinterFines_minus10mm`, `SkipSinterFines_minus5mm`, `SkipSinterFines_MSize`, `SkipSinterFines_ShiftA/B/C`, `SkipSinterFines_TotalFe`, `SkipCokeFines_minus40mm`, `SkipCokeFines_minus25mm`, `SkipCokeFines_MSize`
 
 **Coke quality (`extract_coke_quality.py`):** `CokeQuality_CSP1_Moisture` … `CokeQuality_CSP4_CRI`, `CokeQuality_BF8_Mix_CSR`, `CokeQuality_BF8_Mix_CRI`
+
+**Sinter plant chemistry (`extract_sinter_plant.py`):** `SinterPlant2_DayAvg_Fe_pct`, `SinterPlant2_AO_Basicity`, `SinterPlant3_DayAvg_Fe_pct`, shift samples `AO`–`C2`, etc.
 
 **Page 2 (combined extractor):** `HM_Si_pct_avg`, `HM_S_pct_avg`, `Slag_Basicity_avg`, `SkipSinter_Fe_pct`, etc.
 

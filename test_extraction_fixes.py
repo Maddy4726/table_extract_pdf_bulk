@@ -27,6 +27,7 @@ from extract_skip_fines import (
     extract_skip_fines,
 )
 from extract_coke_quality import extract_coke_quality
+from extract_sinter_plant import extract_sinter_plant
 
 
 class ExtractionFixTests(unittest.TestCase):
@@ -264,6 +265,38 @@ class ExtractionFixTests(unittest.TestCase):
         self.assertIsNone(record["CokeQuality_CSP1_M40"])
         self.assertEqual(record["CokeQuality_CSP3_M40"], "81.8")
         self.assertEqual(record["CokeQuality_CSP4_M10"], "5.6")
+
+    def test_sinter_plant_extraction(self) -> None:
+        sample = "/workspace/NEW P.D.14.01-01.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW P.D.14.01-01.pdf not available")
+
+        record = extract_sinter_plant(sample)
+        self.assertEqual(record["SinterPlant2_DayAvg_Fe_pct"], "49.88")
+        self.assertEqual(record["SinterPlant2_DayAvg_Basicity"], "1.83")
+        self.assertEqual(record["SinterPlant3_DayAvg_Fe_pct"], "50.92")
+        self.assertEqual(record["SinterPlant3_AO_Fe_pct"], "51.73")
+        self.assertEqual(record["SinterPlant2_A1_Fe_pct"], "49.72")
+
+    def test_sinter_plant_split_pdf(self) -> None:
+        sample = "/workspace/NEW P.D.14.01-04.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW P.D.14.01-04.pdf not available")
+
+        record = extract_sinter_plant(sample)
+        self.assertEqual(record["SinterPlant2_DayAvg_Fe_pct"], "51.36")
+        self.assertEqual(record["SinterPlant3_DayAvg_Fe_pct"], "53.24")
+        self.assertEqual(record["SinterPlant3_BO_Fe_pct"], "54.58")
+
+    def test_sinter_plant_2023_format(self) -> None:
+        sample = "/home/ubuntu/.cursor/projects/workspace/uploads/NEW_P.D.14.17-06_570f.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW_P.D.14.17-06 sample not available")
+
+        record = extract_sinter_plant(sample)
+        self.assertEqual(record["SinterPlant2_DayAvg_Fe_pct"], "48.11")
+        self.assertEqual(record["SinterPlant3_DayAvg_Fe_pct"], "48.84")
+        self.assertIsNone(record["SinterPlant2_C1_Fe_pct"])
 
 
 if __name__ == "__main__":

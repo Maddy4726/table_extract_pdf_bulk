@@ -16,6 +16,8 @@ BF8_skip_fines*.csv
 BF8_skip_fines*.xlsx
 BF8_coke_quality*.csv
 BF8_coke_quality*.xlsx
+BF8_sinter_plant*.csv
+BF8_sinter_plant*.xlsx
 fake_drive/
 __pycache__/
 *.pyc
