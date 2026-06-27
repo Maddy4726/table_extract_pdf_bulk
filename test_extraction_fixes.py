@@ -22,10 +22,11 @@ from extract_pellet_analysis import extract_pellet_analysis
 from extract_skip_sinter import extract_skip_sinter
 from extract_skip_fines import (
     _extract_from_merged_table,
-    _extract_from_page_text,
+    _extract_from_page_text as _extract_skip_fines_text,
     _find_fines_tables,
     extract_skip_fines,
 )
+from extract_coke_quality import extract_coke_quality
 
 
 class ExtractionFixTests(unittest.TestCase):
@@ -182,7 +183,7 @@ class ExtractionFixTests(unittest.TestCase):
         BF # 8 30.10 4.20 15.30 49.60
         COKE QUALITY
         """
-        record = _extract_from_page_text(page_text)
+        record = _extract_skip_fines_text(page_text)
         self.assertEqual(record["SkipSinterFines_minus10mm"], "30.10")
         self.assertEqual(record["SkipSinterFines_TotalFe"], "49.60")
         self.assertIsNone(record["SkipSinterFines_ShiftA"])
@@ -229,6 +230,40 @@ class ExtractionFixTests(unittest.TestCase):
         self.assertEqual(record["SkipSinterFines_TotalFe"], "49.69")
         self.assertIsNone(record["SkipSinterFines_ShiftA"])
         self.assertEqual(record["SkipCokeFines_minus40mm"], "41.60")
+
+    def test_coke_quality_extraction(self) -> None:
+        sample = "/workspace/NEW P.D.14.01-01.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW P.D.14.01-01.pdf not available")
+
+        record = extract_coke_quality(sample)
+        self.assertEqual(record["CokeQuality_CSP1_Moisture"], "3.8")
+        self.assertEqual(record["CokeQuality_CSP1_Ash"], "15.2")
+        self.assertEqual(record["CokeQuality_CSP2_CSR"], "64.1")
+        self.assertEqual(record["CokeQuality_CSP2_CRI"], "23.8")
+        self.assertEqual(record["CokeQuality_BF8_Mix_CSR"], "65.6")
+        self.assertEqual(record["CokeQuality_BF8_Mix_CRI"], "23.5")
+
+    def test_coke_quality_wide_merged_table(self) -> None:
+        sample = "/workspace/sample_report.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("sample_report.pdf not available")
+
+        record = extract_coke_quality(sample)
+        self.assertEqual(record["CokeQuality_CSP3_CSR"], "64.6")
+        self.assertEqual(record["CokeQuality_CSP3_CRI"], "23.1")
+        self.assertEqual(record["CokeQuality_CSP1_M40"], "76.1")
+
+    def test_coke_quality_sparse_2023_format(self) -> None:
+        sample = "/home/ubuntu/.cursor/projects/workspace/uploads/NEW_P.D.14.17-06_570f.pdf"
+        if not os.path.exists(sample):
+            self.skipTest("NEW_P.D.14.17-06 sample not available")
+
+        record = extract_coke_quality(sample)
+        self.assertEqual(record["CokeQuality_CSP1_Sulphur"], "0.8")
+        self.assertIsNone(record["CokeQuality_CSP1_M40"])
+        self.assertEqual(record["CokeQuality_CSP3_M40"], "81.8")
+        self.assertEqual(record["CokeQuality_CSP4_M10"], "5.6")
 
 
 if __name__ == "__main__":

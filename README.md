@@ -73,6 +73,17 @@ Output: **`BF8_skip_fines.csv`** / **`.xlsx`** with sinter columns (`SkipSinterF
 
 Handles merged tables (sinter + coke on one row), split tables (separate sinter and coke blocks), and wide layouts that include iron ore sieve between sinter and coke.
 
+### Coke quality (table-by-table)
+
+Use `extract_coke_quality.py` for the page-2 **COKE QUALITY** table: proximate analysis, cold strength (M-40, M-10), and hot strength (CSR, CRI) for CSP-I through CSP-IV, plus BF # 8 stock-house surface mix coke CSR/CRI.
+
+```powershell
+python extract_coke_quality.py --input-dir . --verbose
+python extract_coke_quality.py --from-config --recursive --verbose
+```
+
+Output: **`BF8_coke_quality.csv`** / **`.xlsx`** with `CokeQuality_CSP1_Moisture` … `CokeQuality_CSP4_CRI` and `CokeQuality_BF8_Mix_CSR`, `CokeQuality_BF8_Mix_CRI`, plus date columns.
+
 ### Default PDF folder (your local PC)
 
 ```
@@ -119,6 +130,8 @@ python extract_bf8_daily.py --input-dir "F:\...\DailyProdReports_FY2024-25" --pa
 **Skip sinter chemistry (`extract_skip_sinter.py`):** `SkipSinter_Fe_pct`, `SkipSinter_SiO2_pct`, `SkipSinter_Al2O3_pct`, `SkipSinter_CaO_pct`, `SkipSinter_MgO_pct`, `SkipSinter_Basicity`
 
 **Skip fines (`extract_skip_fines.py`):** `SkipSinterFines_minus10mm`, `SkipSinterFines_minus5mm`, `SkipSinterFines_MSize`, `SkipSinterFines_ShiftA/B/C`, `SkipSinterFines_TotalFe`, `SkipCokeFines_minus40mm`, `SkipCokeFines_minus25mm`, `SkipCokeFines_MSize`
+
+**Coke quality (`extract_coke_quality.py`):** `CokeQuality_CSP1_Moisture` … `CokeQuality_CSP4_CRI`, `CokeQuality_BF8_Mix_CSR`, `CokeQuality_BF8_Mix_CRI`
 
 **Page 2 (combined extractor):** `HM_Si_pct_avg`, `HM_S_pct_avg`, `Slag_Basicity_avg`, `SkipSinter_Fe_pct`, etc.
 
