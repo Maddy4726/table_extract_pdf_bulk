@@ -50,6 +50,7 @@ For a tree with multiple financial-year subfolders (`DailyProdReports_FY2023-24`
 | `extract_sinter_plant.py` | `BF8_sinter_plant` | Sinter plant 2 & 3 chemistry |
 | `extract_bf8_daily.py` | `BF8_merged_all.csv` | Legacy combined page 1+2 summary |
 | `run_all_extractors.py` | `output/BF8_*` | Runs all eight table extractors |
+| `merge_extractor_outputs.py` | `BF8_merged_all` | Merge per-table CSVs into one file |
 
 ## What the PDF contains
 

@@ -23,6 +23,12 @@ python run_all_extractors.py --input-dir "F:\Fuel-Slag Rate Reduction Project\Bl
 
 `run_all_extractors.py` runs all eight table extractors and writes one CSV/Excel file per table under `output/`.
 
+To combine those into **one day-by-day file**:
+
+```powershell
+python merge_extractor_outputs.py --input-dir output --output BF8_merged_all --format csv
+```
+
 ## Repo layout
 
 | File | Role |
@@ -33,6 +39,7 @@ python run_all_extractors.py --input-dir "F:\Fuel-Slag Rate Reduction Project\Bl
 | `extract_bf8_daily.py` | Original combined extractor (page 1 + 2 summary fields). |
 | `extract_*.py` | One script per table — each has `extract_*()` and `stitch_*()`. |
 | `run_all_extractors.py` | Runs every `stitch_*()` in one command. |
+| `merge_extractor_outputs.py` | Joins per-table `BF8_*.csv` files on `date` into one file. |
 | `test_extraction_fixes.py` | Unit tests (run with `pytest`). |
 
 ## How one extractor works
