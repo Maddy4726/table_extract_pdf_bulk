@@ -6,7 +6,6 @@ BF # 8 stock-house surface mix coke CSR/CRI), and writes one row per report day.
 
 Usage:
     python extract_coke_quality.py --input-dir . --verbose
-    python extract_coke_quality.py --from-config --recursive --verbose
 """
 
 from __future__ import annotations
@@ -20,13 +19,12 @@ from typing import Any
 
 import pdfplumber
 
-from drive_paths import load_drive_config, resolve_input_directories
 from extract_bf8_daily import (
     _extract_page_tables,
     _normalize_label,
-    _value_from_header_aliases,
-    collect_pdf_paths,
+    _value_from_header_aliases
 )
+from extract_cli import add_input_args, add_output_args, add_verbose_arg, resolve_pdf_paths
 from extract_table_utils import (
     DEFAULT_PDF_PATTERN,
     assign_report_date,
@@ -443,67 +441,15 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Extract BF-8 coke quality into a day-by-day CSV/Excel file."
     )
-    parser.add_argument("--input-dir", nargs="+", default=None, help="Folder(s) with daily PDFs.")
-    parser.add_argument("--from-config", action="store_true", help="Use pdf_root from drive_config.json.")
-    parser.add_argument(
-        "--output",
-        default=DEFAULT_OUTPUT,
-        help=f"Output path without extension (default: {DEFAULT_OUTPUT}).",
-    )
-    parser.add_argument(
-        "--format",
-        choices=("csv", "excel", "both"),
-        default="both",
-        help="Output format (default: both).",
-    )
-    parser.add_argument(
-        "--pdf-pattern",
-        default=None,
-        help=f"Filename glob when using --input-dir (default: {DEFAULT_PDF_PATTERN!r}).",
-    )
-    parser.add_argument("--recursive", action="store_true", help="Search PDFs recursively.")
-    parser.add_argument("--verbose", action="store_true", help="Print per-file progress and warnings.")
-    parser.add_argument(
-        "--keep-zero",
-        action="store_true",
-        help="Keep literal 0 values instead of converting them to NA.",
-    )
+    add_input_args(parser)
+    add_output_args(parser, DEFAULT_OUTPUT)
+    add_verbose_arg(parser)
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    config = load_drive_config()
-    use_config = args.from_config or args.input_dir is None
-
-    try:
-        input_dirs = resolve_input_directories(
-            input_dirs=args.input_dir,
-            from_config=use_config,
-            config=config,
-        )
-    except FileNotFoundError as exc:
-        print(exc, file=sys.stderr)
-        return 1
-
-    if not input_dirs and args.input_dir:
-        input_dirs = args.input_dir
-
-    pdf_paths = collect_pdf_paths(input_dirs, recursive=args.recursive)
-    pdf_pattern = args.pdf_pattern
-    if pdf_pattern is None and args.input_dir is not None and not use_config:
-        pdf_pattern = DEFAULT_PDF_PATTERN
-    if pdf_pattern:
-        pdf_paths = [path for path in pdf_paths if fnmatch.fnmatch(os.path.basename(path), pdf_pattern)]
-
-    if not pdf_paths:
-        print("No PDF files found.", file=sys.stderr)
-        return 1
-
-    if use_config and args.verbose:
-        print("PDF folders:")
-        for folder in input_dirs:
-            print(f"  - {folder}")
+    pdf_paths = resolve_pdf_paths(args)
 
     print(f"Extracting coke quality from {len(pdf_paths)} PDF(s)...")
     df = stitch_coke_quality(

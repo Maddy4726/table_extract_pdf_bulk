@@ -22,7 +22,8 @@ from typing import Any
 import pandas as pd
 import pdfplumber
 
-from drive_paths import load_drive_config, resolve_input_directories
+from extract_cli import add_input_args, add_output_args, add_verbose_arg, resolve_pdf_paths
+from pdf_paths import collect_pdf_paths
 
 # Parameter label in PDF table -> output CSV column name
 KEY_PARAMS: list[tuple[str, str]] = [
@@ -733,19 +734,6 @@ def extract_bf8_combined(pdf_path: str, verbose: bool = False) -> dict[str, Any]
     return record
 
 
-def collect_pdf_paths(input_dirs: list[str], recursive: bool = False) -> list[str]:
-    paths: list[str] = []
-    pattern = "**/*.pdf" if recursive else "*.pdf"
-
-    for directory in input_dirs:
-        if not os.path.isdir(directory):
-            raise FileNotFoundError(f"Input directory not found: {directory}")
-        matched = glob.glob(os.path.join(directory, pattern), recursive=recursive)
-        paths.extend(matched)
-
-    return sorted(set(paths))
-
-
 def stitch_pdfs_to_csv(
     pdf_paths: list[str],
     output_csv: str,
@@ -768,6 +756,14 @@ def stitch_pdfs_to_csv(
         if verbose:
             print(f"  {os.path.basename(pdf_path)} -> {record['Date']}")
 
+    records.sort(
+        key=lambda record: (
+            pd.to_datetime(record.get("Date"), errors="coerce") is pd.NaT,
+            str(pd.to_datetime(record.get("Date"), errors="coerce")),
+            str(record.get("source_file", "")),
+        )
+    )
+
     df = pd.DataFrame(records)
 
     numeric_cols = {
@@ -781,7 +777,7 @@ def stitch_pdfs_to_csv(
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    df = df.sort_values("Date").reset_index(drop=True)
+    df = df.reset_index(drop=True)
 
     if replace_zero_with_na:
         df = df.replace(0, pd.NA)
@@ -792,43 +788,21 @@ def stitch_pdfs_to_csv(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description=(
-            "Extract BF-8 daily parameters from production report PDFs into CSV. "
-            "With no --input-dir, reads PDF folders from drive_config.json."
-        )
+        description="Extract BF-8 daily parameters from production report PDFs into CSV."
     )
-    parser.add_argument(
-        "--input-dir",
-        nargs="+",
-        default=None,
-        help="One or more folders containing daily PDF reports (overrides config).",
-    )
-    parser.add_argument(
-        "--from-config",
-        action="store_true",
-        help="Read PDF folders from pdf_root in drive_config.json.",
-    )
+    add_input_args(parser)
     parser.add_argument(
         "--output",
-        default=None,
-        help="Output CSV path (default: BF8_merged_all.csv from config, else bf8_daily.csv).",
+        default="BF8_merged_all.csv",
+        help="Output CSV path (default: BF8_merged_all.csv).",
     )
     parser.add_argument(
         "--page",
         choices=("1", "2", "all"),
-        default=None,
+        default="all",
         help="Which pages to extract: 1=production, 2=quality, all=merged.",
     )
-    parser.add_argument(
-        "--recursive",
-        action="store_true",
-        help="Search for PDFs recursively inside input folders.",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Print per-file progress and warnings.",
-    )
+    add_verbose_arg(parser)
     parser.add_argument(
         "--keep-zero",
         action="store_true",
@@ -839,42 +813,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    config = load_drive_config()
-
-    use_config = args.from_config or args.input_dir is None
-    try:
-        input_dirs = resolve_input_directories(
-            input_dirs=args.input_dir,
-            from_config=use_config,
-            config=config,
-        )
-    except FileNotFoundError as exc:
-        print(exc, file=sys.stderr)
-        return 1
-
-    if not input_dirs:
-        print(
-            "No input folders specified. Use --input-dir or set pdf_root in drive_config.json.\n"
-            "See drive_config.json.example and README.md.",
-            file=sys.stderr,
-        )
-        return 1
-
-    output_csv = args.output or (config["output_csv"] if use_config else "bf8_daily.csv")
-    page = args.page or (config["page"] if use_config else "1")
-
-    if use_config:
-        print("Using PDF folders from drive_config.json:")
-        for folder in input_dirs:
-            print(f"  - {folder}")
-
-    pdf_paths = collect_pdf_paths(input_dirs, recursive=args.recursive)
-    if not pdf_paths:
-        print("No PDF files found.", file=sys.stderr)
-        return 1
+    pdf_paths = resolve_pdf_paths(args)
+    output_csv = args.output
+    page = args.page
 
     page_label = {"1": "page 1 production", "2": "page 2 quality", "all": "pages 1+2"}[page]
-    print(f"Found {len(pdf_paths)} PDF(s). Extracting {page_label}...")
+    print(f"Extracting {page_label} from {len(pdf_paths)} PDF(s)...")
     df = stitch_pdfs_to_csv(
         pdf_paths,
         output_csv,

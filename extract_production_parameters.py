@@ -7,7 +7,6 @@ and all sub-rows (Till, Yearly Rate, etc.).
 
 Usage:
     python extract_production_parameters.py --input-dir . --verbose
-    python extract_production_parameters.py --from-config --recursive --verbose
 """
 
 from __future__ import annotations
@@ -22,17 +21,17 @@ from typing import Any
 import pandas as pd
 import pdfplumber
 
-from drive_paths import load_drive_config, resolve_input_directories
 from extract_bf8_daily import (
     _extract_page_tables,
     _find_bf8_column,
-    _find_main_table,
-    collect_pdf_paths,
+    _find_main_table
 )
+from extract_cli import add_input_args, add_output_args, add_verbose_arg, resolve_pdf_paths
 from extract_table_utils import (
     DEFAULT_PDF_PATTERN,
     assign_report_date,
     finalize_dates,
+    sort_records_by_date,
     write_dataframe,
 )
 
@@ -256,6 +255,7 @@ def stitch_production_parameters(
     verbose: bool = False,
 ) -> pd.DataFrame:
     records = [extract_production_parameters(path, verbose=verbose) for path in pdf_paths]
+    records = sort_records_by_date(records)
 
     value_columns = sorted(
         {
@@ -277,7 +277,7 @@ def stitch_production_parameters(
         df[column] = pd.to_numeric(df[column], errors="coerce")
 
     df = finalize_dates(df, pdf_paths)
-    df = df.sort_values("date").reset_index(drop=True)
+    df = df.reset_index(drop=True)
 
     if replace_zero_with_na:
         numeric_cols = [col for col in value_columns if not _is_text_column(col)]
@@ -289,69 +289,17 @@ def stitch_production_parameters(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Extract the complete BF-8 page-1 PARAMETERS table into a day-by-day CSV/Excel file."
+        description="Extract BF-8 production parameters into a day-by-day CSV/Excel file."
     )
-    parser.add_argument("--input-dir", nargs="+", default=None, help="Folder(s) with daily PDFs.")
-    parser.add_argument("--from-config", action="store_true", help="Use pdf_root from drive_config.json.")
-    parser.add_argument(
-        "--output",
-        default=DEFAULT_OUTPUT,
-        help=f"Output path without extension (default: {DEFAULT_OUTPUT}).",
-    )
-    parser.add_argument(
-        "--format",
-        choices=("csv", "excel", "both"),
-        default="both",
-        help="Output format (default: both).",
-    )
-    parser.add_argument(
-        "--pdf-pattern",
-        default=None,
-        help=f"Filename glob when using --input-dir (default: {DEFAULT_PDF_PATTERN!r}).",
-    )
-    parser.add_argument("--recursive", action="store_true", help="Search PDFs recursively.")
-    parser.add_argument("--verbose", action="store_true", help="Print per-file progress and warnings.")
-    parser.add_argument(
-        "--keep-zero",
-        action="store_true",
-        help="Keep literal 0 values instead of converting them to NA.",
-    )
+    add_input_args(parser)
+    add_output_args(parser, DEFAULT_OUTPUT)
+    add_verbose_arg(parser)
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    config = load_drive_config()
-    use_config = args.from_config or args.input_dir is None
-
-    try:
-        input_dirs = resolve_input_directories(
-            input_dirs=args.input_dir,
-            from_config=use_config,
-            config=config,
-        )
-    except FileNotFoundError as exc:
-        print(exc, file=sys.stderr)
-        return 1
-
-    if not input_dirs and args.input_dir:
-        input_dirs = args.input_dir
-
-    pdf_paths = collect_pdf_paths(input_dirs, recursive=args.recursive)
-    pdf_pattern = args.pdf_pattern
-    if pdf_pattern is None and args.input_dir is not None and not use_config:
-        pdf_pattern = DEFAULT_PDF_PATTERN
-    if pdf_pattern:
-        pdf_paths = [path for path in pdf_paths if fnmatch.fnmatch(os.path.basename(path), pdf_pattern)]
-
-    if not pdf_paths:
-        print("No PDF files found.", file=sys.stderr)
-        return 1
-
-    if use_config and args.verbose:
-        print("PDF folders:")
-        for folder in input_dirs:
-            print(f"  - {folder}")
+    pdf_paths = resolve_pdf_paths(args)
 
     print(f"Extracting production parameters from {len(pdf_paths)} PDF(s)...")
     df = stitch_production_parameters(
@@ -363,8 +311,9 @@ def main() -> int:
     )
 
     value_columns = [col for col in df.columns if col.startswith("Prod_")]
-    filled = df[value_columns].notna().sum().sum()
-    total = len(df) * len(value_columns)
+    numeric_columns = [col for col in value_columns if not _is_text_column(col)]
+    filled = df[numeric_columns].notna().sum().sum()
+    total = len(df) * len(numeric_columns)
     print(
         f"Saved {len(df)} day(s) x {len(df.columns)} columns "
         f"({filled}/{total} values filled, {100 * filled / total:.1f}%)"

@@ -37,6 +37,22 @@ def assign_report_date(record: dict[str, Any], page_text: str, pdf_path: str) ->
     record["report_date"] = report_date
 
 
+def sort_records_by_date(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Sort extracted records chronologically without pandas sort_values.
+
+    pdfplumber can leave native libraries in a bad state on some Linux builds;
+    sorting via Python before building the DataFrame avoids a pandas segfault.
+    """
+
+    def sort_key(record: dict[str, Any]) -> tuple[int, str]:
+        parsed = pd.to_datetime(record.get("report_date"), errors="coerce")
+        if pd.isna(parsed):
+            return (1, str(record.get("source_file", "")))
+        return (0, parsed.isoformat())
+
+    return sorted(records, key=sort_key)
+
+
 def finalize_dates(df: pd.DataFrame, pdf_paths: list[str] | None = None) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["report_date"], errors="coerce")
     missing = df["date"].isna()
@@ -93,6 +109,7 @@ def stitch_records(
     replace_zero_with_na: bool = True,
     verbose: bool = False,
 ) -> pd.DataFrame:
+    records = sort_records_by_date(records)
     df = pd.DataFrame(records)
 
     for col in numeric_columns:
@@ -100,7 +117,7 @@ def stitch_records(
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     df = finalize_dates(df, pdf_paths)
-    df = df.sort_values("date").reset_index(drop=True)
+    df = df.reset_index(drop=True)
 
     if replace_zero_with_na:
         df = df.replace(0, pd.NA)

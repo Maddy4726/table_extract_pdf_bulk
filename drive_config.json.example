@@ -1,7 +1,0 @@
-{
-  "pdf_root": "F:\\Fuel-Slag Rate Reduction Project\\Blast Furnace Data\\BF-8\\Production and Quality\\PDF - Daily Production Reports",
-  "_comment": "Change pdf_root if your PDF folders move to a different drive or path.",
-  "fiscal_year_glob": "DailyProdReports_FY*",
-  "output_csv": "BF8_merged_all.csv",
-  "page": "all"
-}
