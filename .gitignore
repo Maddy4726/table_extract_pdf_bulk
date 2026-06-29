@@ -4,7 +4,7 @@ test_output.csv
 test_page2.csv
 test_all.csv
 output/
-BF8_merged_all.csv
+/BF8_merged_all.csv
 BF8_hot_metal_slag*.csv
 BF8_hot_metal_slag*.xlsx
 BF8_skip_iron_ore*.csv
