@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nutrition Tracker</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Nutrition Tracker</h1>
+      <p>Log food by weight and track your daily macros &amp; micros</p>
+    </header>
+
+    <div class="grid">
+      <section class="card" id="log-section">
+        <h2>Log Food <span class="badge">Add entry</span></h2>
+
+        <div class="field">
+          <label for="food-search">Search food</label>
+          <input
+            type="text"
+            id="food-search"
+            placeholder="e.g. chicken, rice, banana..."
+            autocomplete="off"
+          />
+          <div class="search-results" id="search-results"></div>
+        </div>
+
+        <div class="selected-food hidden" id="selected-food"></div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="weight">Weight (grams)</label>
+            <input type="number" id="weight" min="1" max="10000" step="1" value="100" />
+          </div>
+          <div class="field">
+            <label for="meal">Meal (optional)</label>
+            <select id="meal">
+              <option value="">—</option>
+              <option value="Breakfast">Breakfast</option>
+              <option value="Lunch">Lunch</option>
+              <option value="Dinner">Dinner</option>
+              <option value="Snack">Snack</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="preview-panel hidden" id="preview-panel">
+          <h3>Nutrition for this portion</h3>
+          <div class="macro-grid" id="preview-macros"></div>
+          <div class="micro-grid" id="preview-micros"></div>
+        </div>
+
+        <button class="btn btn-primary" id="log-btn" disabled style="margin-top: 1.25rem">
+          Add to log
+        </button>
+      </section>
+
+      <section class="card" id="dashboard-section">
+        <h2>Daily Summary <span class="badge" id="entry-count">0 entries</span></h2>
+
+        <div class="date-nav">
+          <button class="btn-nav" id="prev-day" title="Previous day">‹</button>
+          <input type="date" id="log-date" />
+          <button class="btn-nav" id="next-day" title="Next day">›</button>
+        </div>
+
+        <div class="totals-banner" id="daily-totals"></div>
+
+        <h3 style="font-size: 0.85rem; color: var(--muted); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em">
+          Micronutrients today
+        </h3>
+        <div class="micro-grid" id="daily-micros" style="margin-bottom: 1.5rem"></div>
+
+        <div class="entries-list" id="entries-list">
+          <div class="empty-state" id="empty-state">
+            <div class="icon">🍽️</div>
+            <p>No food logged yet today.<br />Search and add your first meal.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
