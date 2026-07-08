@@ -1,0 +1,34 @@
+# Copy to spend_tracker.yaml and fill in your monthly spends.
+
+period_label: "Apr–Jun 2026 (rolling 3 calendar months)"
+
+months:
+  - "2026-04"
+  - "2026-05"
+  - "2026-06"
+
+spends:
+  hdfc_diners_privilege:
+    "2026-04": 0
+    "2026-05": 0
+    "2026-06": 0
+  icici_rubyx:
+    "2026-04": 0
+    "2026-05": 0
+    "2026-06": 0
+  au_spont:
+    "2026-04": 0
+    "2026-05": 0
+    "2026-06": 0
+  axis_rewards:
+    "2026-04": 0
+    "2026-05": 0
+    "2026-06": 0
+  dbs_supercard:
+    "2026-04": 0
+    "2026-05": 0
+    "2026-06": 0
+  indusind_tiger:
+    "2026-04": 0
+    "2026-05": 0
+    "2026-06": 0

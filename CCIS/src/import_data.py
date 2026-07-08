@@ -105,6 +105,9 @@ def import_all(db_path: Path | str | None = None, config_path: Path | None = Non
             )
 
     conn.commit()
+    from src.spend_tracker import sync_spends_to_db
+
+    sync_spends_to_db(conn, portfolio=config)
     return conn
 
 

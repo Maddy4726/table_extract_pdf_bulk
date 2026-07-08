@@ -1,0 +1,38 @@
+# Monthly card spends for lounge milestone tracking.
+# Edit amounts below, then run:  python main.py build
+#
+# Lounge eligibility uses the sum of spends across the listed months
+# (typically the previous 3 calendar months per issuer rules).
+
+period_label: "Apr–Jun 2026 (rolling 3 calendar months)"
+
+months:
+  - "2026-04"
+  - "2026-05"
+  - "2026-06"
+
+spends:
+  hdfc_diners_privilege:
+    "2026-04": 18000
+    "2026-05": 22000
+    "2026-06": 0
+  icici_rubyx:
+    "2026-04": 12000
+    "2026-05": 15000
+    "2026-06": 4000
+  au_spont:
+    "2026-04": 8000
+    "2026-05": 6000
+    "2026-06": 5000
+  axis_rewards:
+    "2026-04": 10000
+    "2026-05": 11250
+    "2026-06": 10000
+  dbs_supercard:
+    "2026-04": 5000
+    "2026-05": 3000
+    "2026-06": 2000
+  indusind_tiger:
+    "2026-04": 4000
+    "2026-05": 2500
+    "2026-06": 1500

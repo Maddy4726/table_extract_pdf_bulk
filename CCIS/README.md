@@ -30,18 +30,44 @@ This creates:
 - `database/ccis.db` — SQLite database
 - `dashboard/Credit_Card_Intelligence_System.xlsx` — Excel workbook with Dashboard, Card Master, Airport Matrix, Frequent Airports, Spend Priority sheets
 
+## v1.1 — Spend tracking & analysis
+
+### Update your spends
+
+Edit `config/spend_tracker.yaml` with monthly amounts per card, then rebuild:
+
+```bash
+python main.py build
+```
+
+Or set a rolling total from the CLI:
+
+```bash
+python main.py spend set axis_rewards 31250
+python main.py spend set hdfc_diners_privilege 42000 --month 2026-06
+python main.py milestones
+```
+
+### New Excel sheets
+
+| Sheet | Purpose |
+|-------|---------|
+| **Spend Tracker** | Monthly spends per card + rolling 3-month total |
+| **Milestones** | Progress vs lounge threshold, eligible Yes/No |
+| **Unique Airports** | Airports each card adds beyond DBS + Tiger |
+| **Redundancy** | % overlap between card networks |
+
+The **Dashboard** sheet now includes lounge eligibility at a glance.
+
 ## CLI commands
 
 ```bash
-# Rank spend-qualified cards for maximum airport coverage
-python main.py coverage
-
-# Look up lounge access at an airport
-python main.py lounge Raipur
-python main.py lounge "New Delhi"
-
-# Print airport × card matrix
-python main.py matrix
+python main.py build          # Rebuild DB + Excel
+python main.py milestones     # Lounge spend progress
+python main.py spend set axis_rewards 31250
+python main.py coverage       # Spend priority ranking
+python main.py lounge Raipur  # Airport lookup
+python main.py matrix         # Airport × card table
 ```
 
 ## Spend priority (for max airports)
@@ -79,10 +105,9 @@ CCIS/
 | DBS SuperCard | DBS official lounge T&C page |
 | IndusInd Tiger | IndusInd airport lounge program PDF |
 
-## Roadmap (v1.1+)
+## Roadmap
 
-- Statement PDF parser for automatic spend tracking
-- Milestone and fee-waiver tracker sheets wired to live spend data
+- **v1.2** — Statement PDF parser for automatic spend updates
 - Category reward optimizer (fuel, IRCTC, insurance, etc.)
 - Card advisor for new applications
 

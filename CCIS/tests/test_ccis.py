@@ -10,11 +10,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from src.analysis import redundancy_matrix, unique_airports_by_card
 from src.dashboard import build_dashboard
 from src.database import connect
 from src.import_data import import_all
 from src.lounge_engine import lookup_airport, spend_recommendations
 from src.normalize import normalize_city
+from src.spend_tracker import build_milestone_rows
 
 
 class CCISTests(unittest.TestCase):
@@ -55,6 +57,34 @@ class CCISTests(unittest.TestCase):
     def test_build_dashboard(self) -> None:
         output = build_dashboard(self.conn, ROOT / "dashboard" / "test_ccis.xlsx")
         self.assertTrue(output.exists())
+
+    def test_milestone_eligibility(self) -> None:
+        rows = build_milestone_rows()
+        by_key = {row["card_key"]: row for row in rows}
+        self.assertEqual(by_key["axis_rewards"]["lounge_eligible"], "No")
+        self.assertEqual(by_key["axis_rewards"]["rolling_3mo_total_inr"], 31250)
+        self.assertEqual(by_key["dbs_supercard"]["lounge_eligible"], "Yes (no spend)")
+        self.assertEqual(by_key["hdfc_diners_privilege"]["lounge_eligible"], "No")
+
+    def test_dashboard_has_v11_sheets(self) -> None:
+        import openpyxl
+
+        output = build_dashboard(self.conn, ROOT / "dashboard" / "test_ccis_v11.xlsx")
+        wb = openpyxl.load_workbook(output, read_only=True)
+        for name in ("Spend Tracker", "Milestones", "Unique Airports", "Redundancy"):
+            self.assertIn(name, wb.sheetnames)
+        wb.close()
+
+    def test_unique_airports_analysis(self) -> None:
+        rows = unique_airports_by_card(self.conn, vs_baseline=True)
+        rubyx = next(row for row in rows if row["card_key"] == "icici_rubyx")
+        self.assertIn("Raipur", rubyx["unique_airports"])
+
+    def test_redundancy_matrix(self) -> None:
+        keys, matrix = redundancy_matrix(self.conn)
+        self.assertEqual(len(keys), len(matrix))
+        idx = keys.index("dbs_supercard")
+        self.assertEqual(matrix[idx][idx], 100.0)
 
 
 if __name__ == "__main__":
