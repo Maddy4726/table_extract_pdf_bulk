@@ -1,0 +1,13 @@
+HDFC Bank Credit Card Statement
+Card: Diners Club Privilege
+Statement Period: 01/04/2026 to 30/04/2026
+Statement Date: 02/05/2026
+
+Domestic Transactions
+02/04/2026 AMAZON PAY INDIA          4,250.00
+05/04/2026 SWIGGY BANGALORE           890.50
+12/04/2026 INDIAN OIL FUEL            3,600.00
+18/04/2026 FLIPKART PAYMENTS         12,450.00
+25/04/2026 PAYMENT RECEIVED - THANK YOU  20,000.00 CR
+
+Total Purchases and Other Charges: 21,190.50

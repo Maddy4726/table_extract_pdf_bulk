@@ -1,0 +1,38 @@
+# Maps statement folder names under statements/ to portfolio card keys.
+# Drop PDF statements into the matching folder, then run: python main.py statements import
+
+statements_root: statements
+
+folders:
+  axis: axis_rewards
+  hdfc: hdfc_diners_privilege
+  icici: icici_rubyx
+  au: au_spont
+  dbs: dbs_supercard
+  indusind: indusind_tiger
+
+# Substrings that mark non-purchase lines (case-insensitive).
+exclude_keywords:
+  - payment received
+  - paytm payment
+  - neft payment
+  - autopay
+  - credit
+  - reversal
+  - refund
+  - interest
+  - late fee
+  - annual fee
+  - gst on
+  - emi principal
+  - emi interest
+  - cash withdrawal
+  - finance charge
+
+# Prefer labeled totals when found (case-insensitive regex -> group 1 is amount).
+total_labels:
+  - "total purchases[^\\d]*(\\d[\\d,]*\\.?\\d*)"
+  - "purchases?\\s*(?:and|&)\\s*other\\s*charges[^\\d]*(\\d[\\d,]*\\.?\\d*)"
+  - "total spends?[^\\d]*(\\d[\\d,]*\\.?\\d*)"
+  - "retail spends?[^\\d]*(\\d[\\d,]*\\.?\\d*)"
+  - "domestic spends?[^\\d]*(\\d[\\d,]*\\.?\\d*)"

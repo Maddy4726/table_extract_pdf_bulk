@@ -22,9 +22,14 @@ from src.spend_tracker import (
     set_card_rolling_spend,
     sync_spends_to_db,
 )
+from src.statement_parser import format_import_report, import_statements
 
 
-def cmd_build(_: argparse.Namespace) -> int:
+def cmd_build(args: argparse.Namespace) -> int:
+    if args.import_statements:
+        report = import_statements()
+        print(format_import_report(report))
+        print()
     conn = import_all()
     output = build_dashboard(conn)
     counts = card_airport_counts(conn)
@@ -128,6 +133,17 @@ def cmd_lounge(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_statements_import(args: argparse.Namespace) -> int:
+    report = import_statements()
+    print(format_import_report(report))
+    if args.rebuild and report.parsed:
+        conn = connect()
+        sync_spends_to_db(conn)
+        output = build_dashboard(conn)
+        print(f"\nDashboard refreshed -> {output}")
+    return 1 if report.errors else 0
+
+
 def cmd_matrix(args: argparse.Namespace) -> int:
     conn = connect()
     rows = airport_coverage_summary(conn)
@@ -152,6 +168,11 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     build = sub.add_parser("build", help="Import lounge data and generate Excel dashboard")
+    build.add_argument(
+        "--import-statements",
+        action="store_true",
+        help="Parse statement PDFs from statements/ before rebuilding",
+    )
     build.set_defaults(func=cmd_build)
 
     milestones = sub.add_parser("milestones", help="Show lounge spend progress")
@@ -171,6 +192,16 @@ def main() -> int:
     lounge = sub.add_parser("lounge", help="Look up lounge access at an airport")
     lounge.add_argument("airport", help="Airport city name, e.g. Raipur or Delhi")
     lounge.set_defaults(func=cmd_lounge)
+
+    statements = sub.add_parser("statements", help="Import monthly spend from statement PDFs")
+    statements_sub = statements.add_subparsers(dest="statements_command", required=True)
+    statements_import = statements_sub.add_parser("import", help="Parse PDFs under statements/")
+    statements_import.add_argument(
+        "--rebuild",
+        action="store_true",
+        help="Refresh SQLite spend data and Excel dashboard after import",
+    )
+    statements_import.set_defaults(func=cmd_statements_import)
 
     matrix = sub.add_parser("matrix", help="Print airport × card coverage matrix")
     matrix.add_argument("--json", action="store_true")

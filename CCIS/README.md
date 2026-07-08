@@ -59,15 +59,29 @@ python main.py milestones
 
 The **Dashboard** sheet now includes lounge eligibility at a glance.
 
+## v1.2 — Statement PDF import
+
+Drop monthly statement PDFs into `statements/<bank>/` (see `statements/README.md`), then import:
+
+```bash
+python main.py statements import
+python main.py statements import --rebuild   # also refresh dashboard
+python main.py build --import-statements     # import + full rebuild in one step
+```
+
+The parser reads statement period / bill date (or `YYYY-MM` in the filename), then extracts spend from labeled totals such as "Total Purchases" or "Retail Spend", falling back to summing dated transaction lines. Results are written to `config/spend_tracker.yaml`.
+
 ## CLI commands
 
 ```bash
-python main.py build          # Rebuild DB + Excel
-python main.py milestones     # Lounge spend progress
+python main.py build                        # Rebuild DB + Excel
+python main.py build --import-statements    # Import PDFs, then rebuild
+python main.py statements import            # Parse statement PDFs only
+python main.py milestones                   # Lounge spend progress
 python main.py spend set axis_rewards 31250
-python main.py coverage       # Spend priority ranking
-python main.py lounge Raipur  # Airport lookup
-python main.py matrix         # Airport × card table
+python main.py coverage                     # Spend priority ranking
+python main.py lounge Raipur                # Airport lookup
+python main.py matrix                       # Airport × card table
 ```
 
 ## Spend priority (for max airports)
@@ -86,6 +100,8 @@ Use **DBS + Tiger** first (no spend). For spend-qualified cards, prioritize **Ru
 ```
 CCIS/
 ├── config/portfolio.yaml    # Your cards and spend thresholds
+├── config/statements.yaml   # Statement folder → card mapping
+├── statements/              # Drop monthly statement PDFs here
 ├── data/sources/            # Reference PDFs (optional)
 ├── database/ccis.db         # Generated SQLite DB
 ├── dashboard/               # Generated Excel workbook
@@ -107,7 +123,6 @@ CCIS/
 
 ## Roadmap
 
-- **v1.2** — Statement PDF parser for automatic spend updates
 - Category reward optimizer (fuel, IRCTC, insurance, etc.)
 - Card advisor for new applications
 
