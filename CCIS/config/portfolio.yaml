@@ -41,12 +41,12 @@ cards:
     fee_waiver_spend_inr: 300000
     lounge_visits_per_quarter: null
     lounge_spend_required: true
-    lounge_spend_inr: 75000
+    lounge_spend_inr: 60000
     lounge_spend_window_months: 3
     lounge_priority: highest
     spend_priority_rank: 1
     lounge_source: hoi_hdfc_diners
-    notes: "Broadest domestic lounge network in portfolio. Verify spend threshold on latest HDFC T&C."
+    notes: "₹60,000 spend in previous 3 calendar months for domestic lounge eligibility."
 
   - key: icici_rubyx
     bank: ICICI
@@ -57,12 +57,12 @@ cards:
     fee_waiver_spend_inr: 600000
     lounge_visits_per_quarter: 2
     lounge_spend_required: true
-    lounge_spend_inr: 35000
+    lounge_spend_inr: 75000
     lounge_spend_window_months: 3
     lounge_priority: high
     spend_priority_rank: 2
     lounge_source: icici_domestic_consolidated
-    notes: "2 visits per quarter on official domestic list. Spend criteria per ICICI program rules."
+    notes: "₹75,000 spend in previous 3 calendar months for 2 domestic lounge visits per quarter."
 
   - key: au_spont
     bank: AU Small Finance Bank
@@ -73,12 +73,12 @@ cards:
     fee_waiver_spend_inr: null
     lounge_visits_per_quarter: 2
     lounge_spend_required: true
-    lounge_spend_inr: 20000
-    lounge_spend_window_months: 1
+    lounge_spend_inr: 50000
+    lounge_spend_window_months: 3
     lounge_priority: medium
     spend_priority_rank: 3
     lounge_source: hoi_au_credit_card
-    notes: "Strong Tier-2 coverage. Verify monthly spend rule on AU T&C."
+    notes: "₹50,000 spend in previous 3 calendar months for domestic lounge eligibility."
 
   - key: axis_rewards
     bank: Axis

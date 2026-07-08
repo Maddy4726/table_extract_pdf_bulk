@@ -10,9 +10,9 @@ Built from official issuer lounge lists (Axis PDF, ICICI consolidated list, HDFC
 |------|---------------|------------------|
 | DBS SuperCard | 2/qtr | None |
 | IndusInd Tiger | 2/qtr | None |
-| HDFC Diners Privilege | Eligible after spend | ₹75,000 / 3 months |
-| ICICI Rubyx | 2/qtr after spend | ₹35,000 / 3 months |
-| AU Spont | 2/qtr after spend | ₹20,000 / 1 month |
+| HDFC Diners Privilege | Eligible after spend | ₹60,000 / 3 months |
+| ICICI Rubyx | 2/qtr after spend | ₹75,000 / 3 months |
+| AU Spont | 2/qtr after spend | ₹50,000 / 3 months |
 | Axis Rewards | 2/qtr (Set A) | ₹50,000 / 3 months |
 
 SBI Prime is excluded (add-on, inactive).
