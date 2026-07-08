@@ -1,0 +1,111 @@
+# Personal Credit Card Intelligence System — portfolio configuration
+owner: default
+
+cards:
+  - key: dbs_supercard
+    bank: DBS
+    name: Bajaj Finserv DBS Bank SuperCard
+    network: Visa/Mastercard
+    status: active
+    annual_fee_inr: 0
+    fee_waiver_spend_inr: null
+    lounge_visits_per_quarter: 2
+    lounge_spend_required: false
+    lounge_spend_inr: null
+    lounge_spend_window_months: null
+    lounge_priority: backup
+    spend_priority_rank: null
+    notes: "2 complimentary domestic visits per quarter, no spend criteria (7X Plus variant)."
+
+  - key: indusind_tiger
+    bank: IndusInd
+    name: Bajaj Tiger Credit Card
+    network: Visa/Mastercard
+    status: active
+    annual_fee_inr: 0
+    fee_waiver_spend_inr: null
+    lounge_visits_per_quarter: 2
+    lounge_spend_required: false
+    lounge_spend_inr: null
+    lounge_spend_window_months: null
+    lounge_priority: backup
+    spend_priority_rank: null
+    notes: "2 complimentary domestic visits per quarter, no spend criteria."
+
+  - key: hdfc_diners_privilege
+    bank: HDFC
+    name: Diners Club Privilege
+    network: Diners
+    status: active
+    annual_fee_inr: 2500
+    fee_waiver_spend_inr: 300000
+    lounge_visits_per_quarter: null
+    lounge_spend_required: true
+    lounge_spend_inr: 75000
+    lounge_spend_window_months: 3
+    lounge_priority: highest
+    spend_priority_rank: 1
+    lounge_source: hoi_hdfc_diners
+    notes: "Broadest domestic lounge network in portfolio. Verify spend threshold on latest HDFC T&C."
+
+  - key: icici_rubyx
+    bank: ICICI
+    name: Rubyx Visa Credit Card
+    network: Visa
+    status: active
+    annual_fee_inr: 3000
+    fee_waiver_spend_inr: 600000
+    lounge_visits_per_quarter: 2
+    lounge_spend_required: true
+    lounge_spend_inr: 35000
+    lounge_spend_window_months: 3
+    lounge_priority: high
+    spend_priority_rank: 2
+    lounge_source: icici_domestic_consolidated
+    notes: "2 visits per quarter on official domestic list. Spend criteria per ICICI program rules."
+
+  - key: au_spont
+    bank: AU Small Finance Bank
+    name: Spont Credit Card
+    network: Visa/Mastercard
+    status: active
+    annual_fee_inr: 0
+    fee_waiver_spend_inr: null
+    lounge_visits_per_quarter: 2
+    lounge_spend_required: true
+    lounge_spend_inr: 20000
+    lounge_spend_window_months: 1
+    lounge_priority: medium
+    spend_priority_rank: 3
+    lounge_source: hoi_au_credit_card
+    notes: "Strong Tier-2 coverage. Verify monthly spend rule on AU T&C."
+
+  - key: axis_rewards
+    bank: Axis
+    name: Rewards Credit Card
+    network: Mastercard
+    status: active
+    annual_fee_inr: 1000
+    fee_waiver_spend_inr: 200000
+    lounge_visits_per_quarter: 2
+    lounge_spend_required: true
+    lounge_spend_inr: 50000
+    lounge_spend_window_months: 3
+    lounge_set: A
+    lounge_priority: low
+    spend_priority_rank: 4
+    lounge_source: axis_set_a
+    notes: "Set A network only — 6 metro cities. Lowest priority for spend among lounge cards."
+
+frequent_airports:
+  - Raipur
+  - Nagpur
+  - Hyderabad
+  - New Delhi
+  - Mumbai
+  - Bengaluru
+  - Kolkata
+  - Visakhapatnam
+  - Dehradun
+  - Goa
+  - Chennai

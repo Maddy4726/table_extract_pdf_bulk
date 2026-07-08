@@ -1,0 +1,7 @@
+# Credit Card Intelligence System
+database/
+dashboard/*.xlsx
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
