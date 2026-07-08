@@ -6,10 +6,49 @@ Extract **BF # 8** daily production parameters from blast furnace PDF reports us
 
 ```bash
 pip install -r requirements.txt
+python run_bf8_extraction.py --input-dir . --verbose
+```
+
+That runs **all table extractors** on the PDFs in the folder, writes each per-table CSV/Excel file, and builds **`BF8_master_dataset.csv`** / **`.xlsx`** — one merged row per day with production, quality, skip, coke, and sinter-plant columns combined.
+
+For the legacy summary extractor only:
+
+```bash
 python extract_bf8_daily.py --verbose
 ```
 
-That's it. The script reads PDFs from the path in `drive_config.json` and writes **`BF8_merged_all.csv`**.
+That reads PDFs from the path in `drive_config.json` and writes **`BF8_merged_all.csv`**.
+
+### Full extraction pipeline (recommended)
+
+Use `run_bf8_extraction.py` to run every table-by-table extractor and merge the results:
+
+```powershell
+# Sample PDFs in the repo root
+python run_bf8_extraction.py --input-dir . --verbose
+
+# Full 3-year archive on F: drive
+python run_bf8_extraction.py --from-config --recursive --verbose
+
+# Run a subset and write only the merged master file
+python run_bf8_extraction.py --input-dir . --only production_parameters hot_metal_slag --no-individual
+```
+
+Outputs:
+
+| File | Content |
+|------|---------|
+| `BF8_master_dataset.csv` / `.xlsx` | All tables merged on `date` |
+| `BF8_production_parameters.*` | Full page-1 PARAMETERS table |
+| `BF8_hot_metal_slag.*` | Hot metal and slag quality |
+| `BF8_skip_iron_ore.*` | Skip iron ore chemistry and sieve |
+| `BF8_pellet_analysis.*` | Pellet chemistry and sieve |
+| `BF8_skip_sinter.*` | Skip sinter chemistry |
+| `BF8_skip_fines.*` | Skip sinter and coke fines |
+| `BF8_coke_quality.*` | Coke quality (CSP-I–IV + BF-8 mix) |
+| `BF8_sinter_plant.*` | Sinter Plant-2 and Plant-3 chemistry |
+
+List available extractors: `python run_bf8_extraction.py --list-extractors`
 
 ### Hot metal and slag quality (table-by-table, recommended)
 

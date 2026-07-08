@@ -3,5 +3,6 @@
   "_comment": "Change pdf_root if your PDF folders move to a different drive or path.",
   "fiscal_year_glob": "DailyProdReports_FY*",
   "output_csv": "BF8_merged_all.csv",
-  "page": "all"
+  "page": "all",
+  "master_output": "BF8_master_dataset"
 }

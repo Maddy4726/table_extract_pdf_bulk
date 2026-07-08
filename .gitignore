@@ -20,6 +20,8 @@ BF8_sinter_plant*.csv
 BF8_sinter_plant*.xlsx
 BF8_production_parameters*.csv
 BF8_production_parameters*.xlsx
+BF8_master_dataset*.csv
+BF8_master_dataset*.xlsx
 fake_drive/
 __pycache__/
 *.pyc
